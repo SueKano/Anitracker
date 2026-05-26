@@ -1,0 +1,28 @@
+framework:
+    rate_limiter:
+        registration:
+            policy: 'fixed_window'
+            limit: 3
+            interval: '1 hour'
+        password_change:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 hour'
+        # Per-user burst: tolera picos humanos (key = userIdentifier)
+        anilist_search_burst:
+            policy: 'sliding_window'
+            limit: 15
+            interval: '1 minute'
+        anilist_detail_burst:
+            policy: 'sliding_window'
+            limit: 20
+            interval: '1 minute'
+        # Per-user horario: detecta abuso sostenido → activa ban 12h
+        anilist_search_hour:
+            policy: 'sliding_window'
+            limit: 80
+            interval: '1 hour'
+        anilist_detail_hour:
+            policy: 'sliding_window'
+            limit: 120
+            interval: '1 hour'

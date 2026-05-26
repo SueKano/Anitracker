@@ -1,0 +1,253 @@
+.edit-profile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 0 16px calc(var(--nav-h) + 24px);
+}
+
+.edit-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.btn-back {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-2);
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.btn-back:active {
+  color: var(--text);
+  transform: scale(0.92);
+}
+
+.btn-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+.edit-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.edit-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  text-align: left;
+  transition: background 0.12s, transform 0.1s;
+}
+
+.menu-item:active {
+  transform: scale(0.98);
+  background: var(--surface-2);
+}
+
+.menu-icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+.menu-icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-2);
+}
+
+.menu-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.menu-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.menu-hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.menu-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 16px;
+}
+
+.avatar-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.avatar-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2a2535 0%, #1a1720 100%);
+  border: 2px solid var(--border-md);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.avatar-upload:active .avatar-circle {
+  border-color: rgba(134, 59, 255, 0.4);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-letter {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.avatar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s;
+}
+
+.field-wrap:focus-within {
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.field-wrap .field-input {
+  border: none;
+  border-radius: 10px 0 0 10px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  transition: border-color 0.2s;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.field-input::placeholder {
+  color: var(--text-2);
+}
+
+.btn-eye {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  background: none;
+  flex-shrink: 0;
+}
+
+.btn-eye svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+}
+
+.btn-save {
+  width: 100%;
+  padding: 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  transition: background 0.12s, transform 0.1s;
+  margin-top: 4px;
+}
+
+.btn-save:active:not(:disabled) {
+  transform: scale(0.98);
+  background: rgba(134, 59, 255, 0.15);
+}
+
+.btn-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

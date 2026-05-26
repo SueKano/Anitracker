@@ -1,0 +1,16 @@
+.git
+.idea
+.vscode
+var/cache
+var/log
+vendor
+node_modules
+.env.local
+.env.*.local
+compose.yaml
+compose.override.yaml
+*.md
+Dockerfile
+.dockerignore
+.agents
+.claude

@@ -1,0 +1,285 @@
+.contact {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: 0 22px calc(var(--nav-h) + 32px);
+  position: relative;
+  overflow-x: hidden;
+}
+
+.contact::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(800px 500px at -10% -5%, rgba(176, 164, 122, 0.07), transparent 60%),
+    radial-gradient(700px 600px at 110% 80%, rgba(196, 168, 130, 0.05), transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.contact > * { position: relative; z-index: 1; }
+
+.contact-back {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-2);
+  margin-top: 14px;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.contact-back:active {
+  color: var(--text);
+  transform: scale(0.92);
+}
+
+.contact-back svg { width: 16px; height: 16px; }
+
+.contact-article {
+  margin-top: 36px;
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 12vw, 56px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  font-variation-settings: "opsz" 144;
+  animation: rise 0.7s 80ms cubic-bezier(0.2, 0.65, 0.2, 1) backwards;
+}
+
+.contact-rule {
+  margin: 26px 0 22px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-md) 20%, var(--border-md) 80%, transparent);
+  position: relative;
+}
+
+.contact-rule--soft {
+  margin: 32px 0 26px;
+  background: linear-gradient(90deg, transparent, var(--border) 30%, var(--border) 70%, transparent);
+}
+
+.contact-rule-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px var(--accent-dim);
+}
+
+.contact-lede {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--text);
+  margin-bottom: 28px;
+  animation: rise 0.6s 220ms cubic-bezier(0.2, 0.65, 0.2, 1) backwards;
+}
+
+.contact-channels {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.5rem;
+  gap: 8px;
+}
+
+.contact-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+  transition: background 0.18s, border-color 0.18s, transform 0.1s;
+  animation: rise 0.55s cubic-bezier(0.2, 0.65, 0.2, 1) backwards;
+}
+
+.contact-card:nth-child(1) { animation-delay: 280ms; }
+.contact-card:nth-child(2) { animation-delay: 340ms; }
+
+.contact-card:hover {
+  background: var(--surface-2);
+  border-color: var(--border-md);
+}
+
+.contact-card:active { transform: scale(0.985); }
+
+.contact-card-mark {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.contact-card-arrow {
+  width: 14px;
+  height: 14px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: color 0.18s, transform 0.18s;
+}
+
+.contact-card:hover .contact-card-arrow {
+  color: var(--accent);
+  transform: translate(2px, -2px);
+}
+
+.contact-postscript {
+  display: flex;
+  flex-direction: column;
+  animation: rise 0.6s 420ms cubic-bezier(0.2, 0.65, 0.2, 1) backwards;
+}
+
+.contact-ps-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 72;
+  margin-bottom: 14px;
+}
+
+.contact-ps-body {
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--text);
+  opacity: 0.88;
+  margin-bottom: 22px;
+}
+
+.contact-paypal {
+  --paypal-blue: #0070ba;
+  --paypal-blue-dark: #003087;
+  --paypal-blue-light: #009cde;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, var(--paypal-blue-light) 0%, var(--paypal-blue) 55%, var(--paypal-blue-dark) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  color: #ffffff;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 10px 24px -12px rgba(0, 48, 135, 0.55),
+    0 4px 12px -6px rgba(0, 112, 186, 0.45);
+  transition: transform 0.1s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.contact-paypal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(260px 140px at 0% 100%, rgba(255, 255, 255, 0.22), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+}
+
+.contact-paypal:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.22) inset,
+    0 14px 30px -12px rgba(0, 48, 135, 0.7),
+    0 6px 16px -6px rgba(0, 112, 186, 0.55);
+}
+.contact-paypal:hover::before { opacity: 1; }
+.contact-paypal:active { transform: scale(0.99); }
+
+.contact-paypal-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.contact-paypal-label {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  color: #ffffff;
+  letter-spacing: -0.005em;
+}
+
+.contact-paypal-label em {
+  font-style: italic;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.78);
+  margin-left: 2px;
+}
+
+.contact-paypal-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  color: #ffffff;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.contact-paypal-icon svg { width: 22px; height: 22px; display: block; }
+
+.contact-paypal-icon::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  animation: orbit 18s linear infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes seal-in {
+  from { opacity: 0; transform: scale(0.8) rotate(-6deg); }
+  to   { opacity: 0.85; transform: scale(1) rotate(0); }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
