@@ -6,7 +6,10 @@ use App\Entity\User;
 use App\Entity\UserSeries;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
+use League\Flysystem\FilesystemOperator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +17,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
@@ -28,7 +32,7 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/createUser', name: 'new_user', methods: ['POST'])]
-    public function createUser(Request $request): Response
+    public function createUser(Request $request, Security $security): Response
     {
         $data = json_decode($request->getContent(), true);
         $username = trim($data['username'] ?? '');
@@ -48,6 +52,8 @@ class UserController extends AbstractController
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
+        $security->login($user, 'json_login', 'main');
+
         return $this->json(['status' => 'ok']);
     }
 
@@ -58,14 +64,16 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/me', name: 'get_current_user', methods: ['GET'])]
-    public function getCurrentUser(): Response
+    public function getCurrentUser(#[Autowire('%env(R2_PUBLIC_URL)%')] string $cdnProfileImages): Response
     {
         $user = $this->getUser();
         if (!$user) {
             return new JsonResponse(null, Response::HTTP_UNAUTHORIZED);
         }
+        assert($user instanceof User);
+        $profileImage = $user->getProfileImage() ? $cdnProfileImages . '/avatars/' . $user->getProfileImage() : null;
 
-        return new JsonResponse(['username' => $user->getUsername(), 'profileImage' => $user->getProfileImage()]);
+        return new JsonResponse(['username' => $user->getUsername(), 'profileImage' => $profileImage]);
     }
 
     #[Route('/api/deleteAccount', name: 'delete_user', methods: ['POST'])]
@@ -82,17 +90,28 @@ class UserController extends AbstractController
         return new JsonResponse(['status' => 'ok']);
     }
     #[Route('/api/user/updateUser', name: 'update_user', methods: ['POST'])]
-    public function updateUser(Request $request): Response
+    public function updateUser(Request $request, FilesystemOperator $profileImagesStorage): Response
     {
         $newUsername = trim($request->request->get('username') ?? '');
         $newProfileImage = $request->files->get('newProfileImage');
 
         $user = $this->getUser();
+        assert($user instanceof User);
         $user->setUsername($newUsername);
         if ($error = $this->validateEntity($user)) return $error;
 
         if ($newProfileImage) {
-            $user->setProfileImageFile($newProfileImage);
+            $errors = $this->validator->validate($newProfileImage, [
+                new Assert\Image( mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], mimeTypesMessage: 'Sube una imagen válida (JPG, PNG o WebP).'),
+            ]);
+
+            if (count($errors) > 0) {
+                return new JsonResponse(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+            }
+
+            $key = bin2hex(random_bytes(16)) . '.' . $newProfileImage->guessExtension();
+            $profileImagesStorage->write($key, $newProfileImage->getContent());
+            $user->setProfileImage($key);
         }
 
         $this->entityManager->flush();

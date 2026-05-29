@@ -13,7 +13,7 @@ export function useSession() {
       if (!response.ok) return
       const data = await response.json()
       currentUsername.value = data.username
-      currentProfileImage.value = data.profileImage ? `/uploads/profile_images/${data.profileImage}` : null
+      currentProfileImage.value = data.profileImage || null
       isLoggedIn.value = true
     } catch {
       toast.error('Error al verificar tu sesión')

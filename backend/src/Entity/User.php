@@ -6,13 +6,10 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
-use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Validator\Constraints as Assert;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
-#[Vich\Uploadable]
 #[ORM\Entity()]
 #[ORM\Table(name: '"users"')]
 #[UniqueEntity(fields: ['username'], message: 'Ya existe una cuenta con ese nombre de usuario.')]
@@ -27,9 +24,6 @@ class User extends AbstractEntity implements UserInterface, PasswordAuthenticate
     #[Assert\When(expression: 'this.getGoogleId() === null', constraints: [new Assert\NotBlank(message: 'La contraseña es obligatoria')])]
     #[ORM\Column(type:'string', nullable: true)]
     private ?string $password = null;
-
-    #[Vich\UploadableField(mapping: 'profile_images', fileNameProperty: 'profileImage')]
-    private ?File $profileImageFile = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $profileImage = null;
@@ -79,20 +73,6 @@ class User extends AbstractEntity implements UserInterface, PasswordAuthenticate
     {
         $this->password = $password;
         return $this;
-    }
-
-    public function getProfileImageFile(): ?File
-    {
-        return $this->profileImageFile;
-    }
-
-    public function setProfileImageFile(?File $profileImageFile = null): void
-    {
-        $this->profileImageFile = $profileImageFile;
-
-        if ($profileImageFile !== null) {
-            $this->updatedAt = new \DateTime('now');
-        }
     }
 
     public function getProfileImage(): ?string

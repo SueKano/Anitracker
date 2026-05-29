@@ -22,7 +22,15 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
-
+    profile_images.s3_client:
+        class: AsyncAws\S3\S3Client
+        arguments:
+            $configuration:
+                endpoint: '%env(R2_ENDPOINT)%'
+                accessKeyId: '%env(R2_ACCESS_KEY_ID)%'
+                accessKeySecret: '%env(R2_SECRET_ACCESS_KEY)%'
+                region: 'auto'
+                pathStyleEndpoint: true
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

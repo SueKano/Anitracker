@@ -1,0 +1,9 @@
+# Read the documentation at https://github.com/thephpleague/flysystem-bundle/blob/master/docs/1-getting-started.md
+flysystem:
+    storages:
+        profile_images.storage:
+            adapter: 'asyncaws'
+            options:
+                client: profile_images.s3_client
+                bucket: '%env(R2_BUCKET)%'
+                prefix: 'avatars'
