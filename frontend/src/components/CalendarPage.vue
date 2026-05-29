@@ -71,7 +71,7 @@ const dayAnime = computed(() =>
     </div>
     <div class="section-head">
       <span class="section-label">{{ translateDay(selectedDayKey) }}</span>
-      <span class="section-count">{{ dayAnime.length === 1 ? 'serie' : 'series' }}</span>
+      <span class="section-count">{{ dayAnime.length }} {{ dayAnime.length === 1 ? 'serie' : 'series' }}</span>
     </div>
     <div v-if="dayAnime.length > 0" class="grid">
       <div v-for="anime in dayAnime" :key="anime.id" class="tile" @click="emit('select', anime.id)">

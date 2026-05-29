@@ -151,7 +151,7 @@ class SeriesController extends AbstractController
     #[Route('/api/series/getUserSeries', name: 'get_user_series', methods: ['GET'])]
     public function getUserSeries(#[CurrentUser] User $user): Response
     {
-        $userSeries = $this->entityManager->getRepository(UserSeries::class)->findByUser($user);
+        $userSeries = $this->entityManager->getRepository(UserSeries::class)->findByUser($user, ['id' => 'DESC']);
 
         return $this->json(['userSeries' => $userSeries], Response::HTTP_OK, [], ['groups' => ['home:userSeries']]);
     }
