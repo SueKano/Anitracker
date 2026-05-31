@@ -59,7 +59,7 @@ function toggleMode() {
 
       <div class="input-group">
         <div v-if="isRegister">
-          <label class="input-label" for="login-email">Email</label>
+          <label class="input-label" for="login-email">Email <span class="input-hint">— no se verifica, puedes inventártelo</span></label>
           <div class="input-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>

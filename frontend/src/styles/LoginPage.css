@@ -133,6 +133,11 @@
   font-weight: 400;
 }
 
+.input-hint {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
 .btn-eye {
   width: 28px;
   height: 28px;
