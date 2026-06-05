@@ -80,9 +80,14 @@ function handleGoogleLogin() {
   window.location.href = '/api/auth/google'
 }
 
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible' && isLoggedIn.value) fetchUserSeries()
+}
+
 onMounted(async () => {
   await checkSession()
   if (isLoggedIn.value) await fetchUserSeries()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 const tabs: { id: typeof activeTab.value, label: string, icon: string }[] = [
