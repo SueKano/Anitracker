@@ -920,9 +920,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *             filter?: scalar|Param|null, // Default: "({uid_key}={user_identifier})"
  *             password_attribute?: scalar|Param|null, // Default: null
  *         },
- *         lexik_jwt?: array{
- *             class?: scalar|Param|null, // Default: "Lexik\\Bundle\\JWTAuthenticationBundle\\Security\\User\\JWTUser"
- *         },
  *     }>,
  *     firewalls?: array<string, array{ // Default: []
  *         pattern?: scalar|Param|null,
@@ -980,10 +977,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         remote_user?: array{
  *             provider?: scalar|Param|null,
  *             user?: scalar|Param|null, // Default: "REMOTE_USER"
- *         },
- *         jwt?: array{
- *             provider?: scalar|Param|null, // Default: null
- *             authenticator?: scalar|Param|null, // Default: "lexik_jwt_authentication.security.jwt_authenticator"
  *         },
  *         login_link?: array{
  *             check_route?: scalar|Param|null, // Route that will validate the login link - e.g. "app_login_link_verify".
@@ -1205,91 +1198,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     organize_migrations?: scalar|Param|null, // Organize migrations mode. Possible values are: "BY_YEAR", "BY_YEAR_AND_MONTH", false // Default: false
  *     enable_profiler?: bool|Param, // Whether or not to enable the profiler collector to calculate and visualize migration status. This adds some queries overhead. // Default: false
  *     transactional?: bool|Param, // Whether or not to wrap migrations in a single transaction. // Default: true
- * }
- * @psalm-type LexikJwtAuthenticationConfig = array{
- *     public_key?: scalar|Param|null, // The key used to sign tokens (useless for HMAC). If not set, the key will be automatically computed from the secret key. // Default: null
- *     additional_public_keys?: list<scalar|Param|null>,
- *     secret_key?: scalar|Param|null, // The key used to sign tokens. It can be a raw secret (for HMAC), a raw RSA/ECDSA key or the path to a file itself being plaintext or PEM. // Default: null
- *     pass_phrase?: scalar|Param|null, // The key passphrase (useless for HMAC) // Default: ""
- *     token_ttl?: scalar|Param|null, // Default: 3600
- *     allow_no_expiration?: bool|Param, // Allow tokens without "exp" claim (i.e. indefinitely valid, no lifetime) to be considered valid. Caution: usage of this should be rare. // Default: false
- *     clock_skew?: scalar|Param|null, // Default: 0
- *     encoder?: array{
- *         service?: scalar|Param|null, // Default: "lexik_jwt_authentication.encoder.lcobucci"
- *         signature_algorithm?: scalar|Param|null, // Default: "RS256"
- *     },
- *     user_id_claim?: scalar|Param|null, // Default: "username"
- *     token_extractors?: array{
- *         authorization_header?: bool|array{
- *             enabled?: bool|Param, // Default: true
- *             prefix?: scalar|Param|null, // Default: "Bearer"
- *             name?: scalar|Param|null, // Default: "Authorization"
- *         },
- *         cookie?: bool|array{
- *             enabled?: bool|Param, // Default: false
- *             name?: scalar|Param|null, // Default: "BEARER"
- *         },
- *         query_parameter?: bool|array{
- *             enabled?: bool|Param, // Default: false
- *             name?: scalar|Param|null, // Default: "bearer"
- *         },
- *         split_cookie?: bool|array{
- *             enabled?: bool|Param, // Default: false
- *             cookies?: list<scalar|Param|null>,
- *         },
- *     },
- *     remove_token_from_body_when_cookies_used?: scalar|Param|null, // Default: true
- *     set_cookies?: array<string, array{ // Default: []
- *         lifetime?: scalar|Param|null, // The cookie lifetime. If null, the "token_ttl" option value will be used // Default: null
- *         samesite?: "none"|"lax"|"strict"|Param, // Default: "lax"
- *         path?: scalar|Param|null, // Default: "/"
- *         domain?: scalar|Param|null, // Default: null
- *         secure?: scalar|Param|null, // Default: true
- *         httpOnly?: scalar|Param|null, // Default: true
- *         partitioned?: scalar|Param|null, // Default: false
- *         split?: list<scalar|Param|null>,
- *     }>,
- *     api_platform?: bool|array{ // API Platform compatibility: add check_path in OpenAPI documentation.
- *         enabled?: bool|Param, // Default: false
- *         check_path?: scalar|Param|null, // The login check path to add in OpenAPI. // Default: null
- *         username_path?: scalar|Param|null, // The path to the username in the JSON body. // Default: null
- *         password_path?: scalar|Param|null, // The path to the password in the JSON body. // Default: null
- *     },
- *     access_token_issuance?: bool|array{
- *         enabled?: bool|Param, // Default: false
- *         signature?: array{
- *             algorithm?: scalar|Param|null, // The algorithm use to sign the access tokens.
- *             key?: scalar|Param|null, // The signature key. It shall be JWK encoded.
- *         },
- *         encryption?: bool|array{
- *             enabled?: bool|Param, // Default: false
- *             key_encryption_algorithm?: scalar|Param|null, // The key encryption algorithm is used to encrypt the token.
- *             content_encryption_algorithm?: scalar|Param|null, // The key encryption algorithm is used to encrypt the token.
- *             key?: scalar|Param|null, // The encryption key. It shall be JWK encoded.
- *         },
- *     },
- *     access_token_verification?: bool|array{
- *         enabled?: bool|Param, // Default: false
- *         signature?: array{
- *             header_checkers?: list<scalar|Param|null>,
- *             claim_checkers?: list<scalar|Param|null>,
- *             mandatory_claims?: list<scalar|Param|null>,
- *             allowed_algorithms?: list<scalar|Param|null>,
- *             keyset?: scalar|Param|null, // The signature keyset. It shall be JWKSet encoded.
- *         },
- *         encryption?: bool|array{
- *             enabled?: bool|Param, // Default: false
- *             continue_on_decryption_failure?: bool|Param, // If enable, non-encrypted tokens or tokens that failed during decryption or verification processes are accepted. // Default: false
- *             header_checkers?: list<scalar|Param|null>,
- *             allowed_key_encryption_algorithms?: list<scalar|Param|null>,
- *             allowed_content_encryption_algorithms?: list<scalar|Param|null>,
- *             keyset?: scalar|Param|null, // The encryption keyset. It shall be JWKSet encoded.
- *         },
- *     },
- *     blocklist_token?: bool|array{
- *         enabled?: bool|Param, // Default: false
- *         cache?: scalar|Param|null, // Storage to track blocked tokens // Default: "cache.app"
- *     },
  * }
  * @psalm-type NelmioCorsConfig = array{
  *     defaults?: array{
@@ -1546,6 +1454,191 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         read_only?: bool|Param, // Converts a file system to read-only // Default: false
  *     }>,
  * }
+ * @psalm-type NelmioSecurityConfig = array{
+ *     signed_cookie?: array{
+ *         names?: list<scalar|Param|null>,
+ *         secret?: scalar|Param|null, // Default: "%kernel.secret%"
+ *         hash_algo?: scalar|Param|null,
+ *         legacy_hash_algo?: scalar|Param|null, // Fallback algorithm to allow for frictionless hash algorithm upgrades. Use with caution and as a temporary measure as it allows for downgrade attacks. // Default: null
+ *         separator?: scalar|Param|null, // Default: "."
+ *     },
+ *     clickjacking?: array{
+ *         hosts?: list<scalar|Param|null>,
+ *         paths?: array<string, array{ // Default: {"^/.*":{"header":"DENY"}}
+ *             header?: scalar|Param|null, // Default: "DENY"
+ *         }>,
+ *         content_types?: list<scalar|Param|null>,
+ *     },
+ *     external_redirects?: array{
+ *         abort?: bool|Param, // Default: false
+ *         override?: scalar|Param|null, // Default: null
+ *         forward_as?: scalar|Param|null, // Default: null
+ *         log?: bool|Param, // Default: false
+ *         allow_list?: list<scalar|Param|null>,
+ *     },
+ *     flexible_ssl?: bool|array{
+ *         enabled?: bool|Param, // Default: false
+ *         cookie_name?: scalar|Param|null, // Default: "auth"
+ *         unsecured_logout?: bool|Param, // Default: false
+ *     },
+ *     forced_ssl?: bool|array{
+ *         enabled?: bool|Param, // Default: false
+ *         hsts_max_age?: scalar|Param|null, // Default: null
+ *         hsts_subdomains?: bool|Param, // Default: false
+ *         hsts_preload?: bool|Param, // Default: false
+ *         allow_list?: list<scalar|Param|null>,
+ *         hosts?: list<scalar|Param|null>,
+ *         redirect_status_code?: scalar|Param|null, // Default: 302
+ *     },
+ *     content_type?: array{
+ *         nosniff?: bool|Param, // Default: false
+ *     },
+ *     xss_protection?: array{ // Deprecated: The "xss_protection" option is deprecated, use Content Security Policy without allowing "unsafe-inline" scripts instead.
+ *         enabled?: bool|Param, // Default: false
+ *         mode_block?: bool|Param, // Default: false
+ *         report_uri?: scalar|Param|null, // Default: null
+ *     },
+ *     csp?: bool|array{
+ *         enabled?: bool|Param, // Default: true
+ *         request_matcher?: scalar|Param|null, // Default: null
+ *         hosts?: list<scalar|Param|null>,
+ *         content_types?: list<scalar|Param|null>,
+ *         report_endpoint?: array{
+ *             log_channel?: scalar|Param|null, // Default: null
+ *             log_formatter?: scalar|Param|null, // Default: "nelmio_security.csp_report.log_formatter"
+ *             log_level?: "alert"|"critical"|"debug"|"emergency"|"error"|"info"|"notice"|"warning"|Param, // Default: "notice"
+ *             filters?: array{
+ *                 domains?: bool|Param, // Default: true
+ *                 schemes?: bool|Param, // Default: true
+ *                 browser_bugs?: bool|Param, // Default: true
+ *                 injected_scripts?: bool|Param, // Default: true
+ *             },
+ *             dismiss?: list<list<"default-src"|"base-uri"|"block-all-mixed-content"|"child-src"|"connect-src"|"font-src"|"form-action"|"frame-ancestors"|"frame-src"|"img-src"|"manifest-src"|"media-src"|"object-src"|"plugin-types"|"script-src"|"style-src"|"upgrade-insecure-requests"|"report-uri"|"worker-src"|"prefetch-src"|"report-to"|"*"|Param>>,
+ *         },
+ *         compat_headers?: bool|Param, // Default: true
+ *         report_logger_service?: scalar|Param|null, // Default: "logger"
+ *         hash?: array{
+ *             algorithm?: "sha256"|"sha384"|"sha512"|Param, // The algorithm to use for hashes // Default: "sha256"
+ *         },
+ *         report?: array{
+ *             level1_fallback?: bool|Param, // Provides CSP Level 1 fallback when using hash or nonce (CSP level 2) by adding 'unsafe-inline' source. See https://www.w3.org/TR/CSP2/#directive-script-src and https://www.w3.org/TR/CSP2/#directive-style-src // Default: true
+ *             browser_adaptive?: bool|array{ // Do not send directives that browser do not support
+ *                 enabled?: bool|Param, // Default: false
+ *                 parser?: scalar|Param|null, // Default: "nelmio_security.ua_parser.ua_php"
+ *             },
+ *             default-src?: list<scalar|Param|null>,
+ *             base-uri?: list<scalar|Param|null>,
+ *             block-all-mixed-content?: bool|Param, // Default: false
+ *             child-src?: list<scalar|Param|null>,
+ *             connect-src?: list<scalar|Param|null>,
+ *             font-src?: list<scalar|Param|null>,
+ *             form-action?: list<scalar|Param|null>,
+ *             frame-ancestors?: list<scalar|Param|null>,
+ *             frame-src?: list<scalar|Param|null>,
+ *             img-src?: list<scalar|Param|null>,
+ *             manifest-src?: list<scalar|Param|null>,
+ *             media-src?: list<scalar|Param|null>,
+ *             object-src?: list<scalar|Param|null>,
+ *             plugin-types?: list<scalar|Param|null>,
+ *             script-src?: list<scalar|Param|null>,
+ *             style-src?: list<scalar|Param|null>,
+ *             upgrade-insecure-requests?: bool|Param, // Default: false
+ *             report-uri?: list<scalar|Param|null>,
+ *             worker-src?: list<scalar|Param|null>,
+ *             prefetch-src?: list<scalar|Param|null>,
+ *             report-to?: scalar|Param|null,
+ *         },
+ *         enforce?: array{
+ *             level1_fallback?: bool|Param, // Provides CSP Level 1 fallback when using hash or nonce (CSP level 2) by adding 'unsafe-inline' source. See https://www.w3.org/TR/CSP2/#directive-script-src and https://www.w3.org/TR/CSP2/#directive-style-src // Default: true
+ *             browser_adaptive?: bool|array{ // Do not send directives that browser do not support
+ *                 enabled?: bool|Param, // Default: false
+ *                 parser?: scalar|Param|null, // Default: "nelmio_security.ua_parser.ua_php"
+ *             },
+ *             default-src?: list<scalar|Param|null>,
+ *             base-uri?: list<scalar|Param|null>,
+ *             block-all-mixed-content?: bool|Param, // Default: false
+ *             child-src?: list<scalar|Param|null>,
+ *             connect-src?: list<scalar|Param|null>,
+ *             font-src?: list<scalar|Param|null>,
+ *             form-action?: list<scalar|Param|null>,
+ *             frame-ancestors?: list<scalar|Param|null>,
+ *             frame-src?: list<scalar|Param|null>,
+ *             img-src?: list<scalar|Param|null>,
+ *             manifest-src?: list<scalar|Param|null>,
+ *             media-src?: list<scalar|Param|null>,
+ *             object-src?: list<scalar|Param|null>,
+ *             plugin-types?: list<scalar|Param|null>,
+ *             script-src?: list<scalar|Param|null>,
+ *             style-src?: list<scalar|Param|null>,
+ *             upgrade-insecure-requests?: bool|Param, // Default: false
+ *             report-uri?: list<scalar|Param|null>,
+ *             worker-src?: list<scalar|Param|null>,
+ *             prefetch-src?: list<scalar|Param|null>,
+ *             report-to?: scalar|Param|null,
+ *         },
+ *     },
+ *     referrer_policy?: bool|array{
+ *         enabled?: bool|Param, // Default: false
+ *         policies?: list<scalar|Param|null>,
+ *     },
+ *     permissions_policy?: bool|array{
+ *         enabled?: bool|Param, // Default: false
+ *         policies?: array{
+ *             accelerometer?: mixed, // Default: null
+ *             ambient_light_sensor?: mixed, // Default: null
+ *             attribution_reporting?: mixed, // Default: null
+ *             autoplay?: mixed, // Default: null
+ *             bluetooth?: mixed, // Default: null
+ *             browsing_topics?: mixed, // Default: null
+ *             camera?: mixed, // Default: null
+ *             captured_surface_control?: mixed, // Default: null
+ *             compute_pressure?: mixed, // Default: null
+ *             cross_origin_isolated?: mixed, // Default: null
+ *             deferred_fetch?: mixed, // Default: null
+ *             deferred_fetch_minimal?: mixed, // Default: null
+ *             display_capture?: mixed, // Default: null
+ *             encrypted_media?: mixed, // Default: null
+ *             fullscreen?: mixed, // Default: null
+ *             gamepad?: mixed, // Default: null
+ *             geolocation?: mixed, // Default: null
+ *             gyroscope?: mixed, // Default: null
+ *             hid?: mixed, // Default: null
+ *             identity_credentials_get?: mixed, // Default: null
+ *             idle_detection?: mixed, // Default: null
+ *             interest_cohort?: mixed, // Default: null
+ *             language_detector?: mixed, // Default: null
+ *             local_fonts?: mixed, // Default: null
+ *             magnetometer?: mixed, // Default: null
+ *             microphone?: mixed, // Default: null
+ *             midi?: mixed, // Default: null
+ *             otp_credentials?: mixed, // Default: null
+ *             payment?: mixed, // Default: null
+ *             picture_in_picture?: mixed, // Default: null
+ *             publickey_credentials_create?: mixed, // Default: null
+ *             publickey_credentials_get?: mixed, // Default: null
+ *             screen_wake_lock?: mixed, // Default: null
+ *             serial?: mixed, // Default: null
+ *             speaker_selection?: mixed, // Default: null
+ *             storage_access?: mixed, // Default: null
+ *             summarizer?: mixed, // Default: null
+ *             translator?: mixed, // Default: null
+ *             usb?: mixed, // Default: null
+ *             web_share?: mixed, // Default: null
+ *             window_management?: mixed, // Default: null
+ *             xr_spatial_tracking?: mixed, // Default: null
+ *         },
+ *     },
+ *     cross_origin_isolation?: bool|array{
+ *         enabled?: bool|Param, // Default: false
+ *         paths?: array<string, array{ // Default: []
+ *             coep?: "unsafe-none"|"require-corp"|"credentialless"|Param, // Cross-Origin-Embedder-Policy (COEP) header value
+ *             coop?: "unsafe-none"|"same-origin-allow-popups"|"same-origin"|"noopener-allow-popups"|Param, // Cross-Origin-Opener-Policy (COOP) header value
+ *             corp?: "same-site"|"same-origin"|"cross-origin"|Param, // Cross-Origin-Resource-Policy (CORP) header value
+ *             report_only?: bool|Param, // Use Report-Only headers instead of enforcing (applies to COEP and COOP only) // Default: false
+ *             report_to?: scalar|Param|null, // Reporting endpoint name for violations (requires Reporting API configuration, applies to COEP and COOP only) // Default: null
+ *         }>,
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1554,12 +1647,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     doctrine?: DoctrineConfig,
  *     security?: SecurityConfig,
  *     doctrine_migrations?: DoctrineMigrationsConfig,
- *     lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *     nelmio_cors?: NelmioCorsConfig,
  *     twig?: TwigConfig,
  *     stof_doctrine_extensions?: StofDoctrineExtensionsConfig,
  *     knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *     flysystem?: FlysystemConfig,
+ *     nelmio_security?: NelmioSecurityConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1568,12 +1661,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         security?: SecurityConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
- *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         twig?: TwigConfig,
  *         stof_doctrine_extensions?: StofDoctrineExtensionsConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         flysystem?: FlysystemConfig,
+ *         nelmio_security?: NelmioSecurityConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1583,12 +1676,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         security?: SecurityConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
- *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         twig?: TwigConfig,
  *         stof_doctrine_extensions?: StofDoctrineExtensionsConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         flysystem?: FlysystemConfig,
+ *         nelmio_security?: NelmioSecurityConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1598,12 +1691,12 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine?: DoctrineConfig,
  *         security?: SecurityConfig,
  *         doctrine_migrations?: DoctrineMigrationsConfig,
- *         lexik_jwt_authentication?: LexikJwtAuthenticationConfig,
  *         nelmio_cors?: NelmioCorsConfig,
  *         twig?: TwigConfig,
  *         stof_doctrine_extensions?: StofDoctrineExtensionsConfig,
  *         knpu_oauth2_client?: KnpuOauth2ClientConfig,
  *         flysystem?: FlysystemConfig,
+ *         nelmio_security?: NelmioSecurityConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

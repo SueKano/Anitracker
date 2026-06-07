@@ -17,7 +17,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
@@ -27,7 +29,8 @@ class UserController extends AbstractController
                                 private readonly ClientRegistry         $clientRegistry, private readonly ValidatorInterface $validator,
                                 private readonly TokenStorageInterface  $tokenStorage,
                                 #[Target('registrationLimiter')] private readonly RateLimiterFactoryInterface $registrationLimiter,
-                                #[Target('passwordChangeLimiter')] private readonly RateLimiterFactoryInterface $passwordChangeLimiter)
+                                #[Target('passwordChangeLimiter')] private readonly RateLimiterFactoryInterface $passwordChangeLimiter,
+                                #[Target('updateUserLimiter')] private readonly RateLimiterFactoryInterface $updateUserLimiter)
     {
     }
 
@@ -47,7 +50,15 @@ class UserController extends AbstractController
         $user->setEmail($email);
         $hashedPassword = $this->passwordHasher->hashPassword($user, $plainPassword);
         $user->setPassword($hashedPassword);
-        if ($error = $this->validateEntity($user)) return $error;
+        $errors = $this->validator->validate($user);
+        if (count($errors) > 0) {
+            foreach ($errors as $error) {
+                if ($error->getConstraint() instanceof UniqueEntity) {
+                    return $this->json(['error' => 'Los datos introducidos no son válidos.'], Response::HTTP_BAD_REQUEST);
+                }
+            }
+            return $this->json(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+        }
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
@@ -58,55 +69,51 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/login', name: 'api_login', methods: ['POST'])]
-    public function login(): Response
+    public function login(#[CurrentUser] User $user): Response
     {
-        return $this->json(['username' => $this->getUser()->getUserIdentifier()]);
+        return $this->json(['username' => $user->getUserIdentifier()]);
     }
 
     #[Route('/api/me', name: 'get_current_user', methods: ['GET'])]
-    public function getCurrentUser(#[Autowire('%env(R2_PUBLIC_URL)%')] string $cdnProfileImages): Response
+    public function getCurrentUser(#[CurrentUser] User $user, #[Autowire('%env(R2_PUBLIC_URL)%')] string $cdnProfileImages): Response
     {
-        $user = $this->getUser();
-        if (!$user) {
-            return new JsonResponse(null, Response::HTTP_UNAUTHORIZED);
-        }
-        assert($user instanceof User);
         $profileImage = $user->getProfileImage() ? $cdnProfileImages . '/avatars/' . $user->getProfileImage() : null;
 
         return new JsonResponse(['username' => $user->getUsername(), 'profileImage' => $profileImage]);
     }
 
     #[Route('/api/deleteAccount', name: 'delete_user', methods: ['POST'])]
-    public function deleteUser(Request $request): Response
+    public function deleteUser(Request $request, #[CurrentUser] User $user): Response
     {
-        $user = $this->getUser();
-        if ($user) {
-            $this->tokenStorage->setToken(null);
-            $request->getSession()->invalidate();
-            $this->entityManager->remove($user);
-            $this->entityManager->flush();
-        }
+        $this->tokenStorage->setToken(null);
+        $request->getSession()->invalidate();
+        $this->entityManager->remove($user);
+        $this->entityManager->flush();
 
         return new JsonResponse(['status' => 'ok']);
     }
+
     #[Route('/api/user/updateUser', name: 'update_user', methods: ['POST'])]
-    public function updateUser(Request $request, FilesystemOperator $profileImagesStorage): Response
+    public function updateUser(Request $request, #[CurrentUser] User $user, FilesystemOperator $profileImagesStorage): Response
     {
         $newUsername = trim($request->request->get('username') ?? '');
         $newProfileImage = $request->files->get('newProfileImage');
-
-        $user = $this->getUser();
-        assert($user instanceof User);
+        if ($error = $this->checkRateLimit($this->updateUserLimiter, $user->getUserIdentifier())) return $error;
         $user->setUsername($newUsername);
         if ($error = $this->validateEntity($user)) return $error;
 
         if ($newProfileImage) {
             $errors = $this->validator->validate($newProfileImage, [
-                new Assert\Image( mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], mimeTypesMessage: 'Sube una imagen válida (JPG, PNG o WebP).'),
+                new Assert\Image(maxSize: '2M', mimeTypes: ['image/jpeg', 'image/png', 'image/webp'], mimeTypesMessage: 'Sube una imagen válida (JPG, PNG o WebP).'),
             ]);
 
             if (count($errors) > 0) {
                 return new JsonResponse(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+            }
+
+            $oldKey = $user->getProfileImage();
+            if ($oldKey) {
+                $profileImagesStorage->delete($oldKey);
             }
 
             $key = bin2hex(random_bytes(16)) . '.' . $newProfileImage->guessExtension();
@@ -120,15 +127,12 @@ class UserController extends AbstractController
     }
 
     #[Route('/api/changePassword', name: 'change_password', methods: ['POST'])]
-    public function changePassword(Request $request): Response
+    public function changePassword(Request $request, #[CurrentUser] User $user): Response
     {
         $data = json_decode($request->getContent(), true);
         if (!isset($data['currentPassword'], $data['newPassword'])) {
             return new JsonResponse(['error' => 'Rellena todos los campos.'], Response::HTTP_BAD_REQUEST);
         }
-
-        $user = $this->getUser();
-        assert($user instanceof User);
 
         if ($error = $this->checkRateLimit($this->passwordChangeLimiter, $user->getUserIdentifier())) return $error;
 
@@ -144,9 +148,8 @@ class UserController extends AbstractController
         return $this->json(['status' => 'ok']);
     }
     #[Route('/api/user/getLastUpdates', name: 'get_last_updates', methods: ['GET'])]
-    public function getLastUpdatesByUser(): Response
+    public function getLastUpdatesByUser(#[CurrentUser] User $user): Response
     {
-        $user = $this->getUser();
         $lastUpdates = $this->entityManager->getRepository(UserSeries::class)->findByUser($user, ['updatedAt' => 'DESC'], 5);
 
         return $this->json(['lastUpdates' => $lastUpdates], Response::HTTP_OK, [], ['groups' => ['userProfile:series']]);

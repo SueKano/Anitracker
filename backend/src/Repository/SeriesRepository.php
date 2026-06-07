@@ -16,20 +16,25 @@ class SeriesRepository extends ServiceEntityRepository
         parent::__construct($registry, Series::class);
     }
 
-    /**
-     * Series candidatas a refresco automático:
-     *  - RELEASING cuyo próximo episodio ya debería haber salido (o sin fecha conocida).
-     *  - NOT_YET_RELEASED cuyo último refresco supera el TTL.
-     * @return Series[]
-     */
-    public function findDueForAutoRefresh(): array
+    public function findAiringSeriesForAutoRefresh(): array
     {
         return $this->createQueryBuilder('s')
-            ->where('s.airingStatus = :releasing AND (s.nextAiringAt IS NULL OR s.nextAiringAt <= :now)')
-            ->orWhere('s.airingStatus = :notYetReleased AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :notYetReleasedThreshold)')
+            ->where('s.airingStatus = :releasing AND s.airingDay = :airingDay AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt < :today)')
             ->setParameter('releasing', SeriesStatus::RELEASING->value)
+            ->setParameter('airingDay', strtoupper(new \DateTime()->format('l')))
+            ->setParameter('today', new \DateTime('today'))
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findFutureSeriesForAutoRefresh(): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.airingStatus = :notYetReleased AND s.airingDay = :airingDay AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt < :today)')
+            ->orWhere('s.airingStatus = :notYetReleased AND s.airingDay IS NULL AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :notYetReleasedThreshold)')
             ->setParameter('notYetReleased', SeriesStatus::NOT_YET_RELEASED->value)
-            ->setParameter('now', new \DateTime())
+            ->setParameter('airingDay', strtoupper(new \DateTime()->format('l')))
+            ->setParameter('today', new \DateTime('today'))
             ->setParameter('notYetReleasedThreshold', new \DateTime(SeriesRefresher::NOT_YET_RELEASED_TTL))
             ->getQuery()
             ->getResult();

@@ -14,7 +14,7 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'app:series:refresh-airing', description: 'Refresca series RELEASING con episodio pendiente y NOT_YET_RELEASED stale (modo cron diario)')]
+#[AsCommand(name: 'app:series:refresh-airing', description: 'Refresca series RELEASING que emiten hoy y NOT_YET_RELEASED pendientes (modo cron diario)')]
 class RefreshAiringSeriesCommand extends Command
 {
     private const int SLEEP_MS = 2000;
@@ -34,8 +34,8 @@ class RefreshAiringSeriesCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $series = $input->getOption('all') ? $this->seriesRepository->findBy(['airingStatus' => [SeriesStatus::RELEASING->value, SeriesStatus::NOT_YET_RELEASED->value]]) :
-            $this->seriesRepository->findDueForAutoRefresh();
+        $series = !$input->getOption('all') ? array_merge($this->seriesRepository->findAiringSeriesForAutoRefresh(), $this->seriesRepository->findFutureSeriesForAutoRefresh())
+            : $this->seriesRepository->findBy(['airingStatus' => [SeriesStatus::RELEASING->value, SeriesStatus::NOT_YET_RELEASED->value]]);
 
         $total = count($series);
         if ($total === 0) {

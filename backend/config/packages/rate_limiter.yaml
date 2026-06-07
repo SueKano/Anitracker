@@ -8,7 +8,10 @@ framework:
             policy: 'sliding_window'
             limit: 5
             interval: '1 hour'
-        # Per-user burst: tolera picos humanos (key = userIdentifier)
+        update_user:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 hour'
         anilist_search_burst:
             policy: 'sliding_window'
             limit: 15
@@ -17,7 +20,6 @@ framework:
             policy: 'sliding_window'
             limit: 20
             interval: '1 minute'
-        # Per-user horario: detecta abuso sostenido → activa ban 12h
         anilist_search_hour:
             policy: 'sliding_window'
             limit: 80

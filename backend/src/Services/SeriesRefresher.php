@@ -11,7 +11,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class SeriesRefresher
 {
-    public const string NOT_YET_RELEASED_TTL = '-5 days';
+    public const string NOT_YET_RELEASED_TTL = '-7 days';
 
     private const string QUERY = 'query($id:Int){
         Media(id:$id,type:ANIME){
@@ -63,14 +63,10 @@ class SeriesRefresher
             return;
         }
 
-        $series->setCurrentAiringEpisode(max(0, $next['episode'] - 1));
+        $series->setCurrentAiringEpisode($next['episode'] - 1);
         $series->setNextAiringAt(new \DateTime()->setTimestamp($next['airingAt']));
-
-        if ($data['status'] === SeriesStatus::RELEASING->value) {
-            $day = new \DateTimeImmutable('@' . $next['airingAt'])->setTimezone(new \DateTimeZone('Europe/Madrid'))
-                ->format('l');
-            $series->setAiringDay(strtoupper($day));
-        }
+        $day = new \DateTimeImmutable('@' . $next['airingAt'])->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l');
+        $series->setAiringDay(strtoupper($day));
     }
 
     public function refreshIfReleasingDue(Series $series): bool

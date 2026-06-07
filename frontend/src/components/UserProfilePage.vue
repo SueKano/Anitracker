@@ -28,16 +28,11 @@ const editSection = ref<'profile' | 'password' | null>(null)
 const infoSection = ref<'privacy' | 'contact' | null>(null)
 
 const isDecember = computed(() => new Date().getMonth() === 11)
-
-const episodesWatched = computed(() =>
-  props.animeList.reduce((sum, anime) => sum + anime.progress, 0))
-
-const favoritesCount = computed(() =>
-  props.animeList.filter(anime => anime.favorite).length)
-
-const daysWatched = computed(() =>
-  (episodesWatched.value * EPISODE_MINUTES / MINUTES_PER_DAY).toFixed(1)
-)
+const episodesWatched = computed(() => props.animeList.reduce((sum, anime) => sum + anime.progress, 0))
+const favoritesCount = computed(() => props.animeList.filter(anime => anime.favorite).length)
+const currentlyWatching = computed(() => props.animeList.filter(anime => anime.airingStatus === 'RELEASING').length)
+const completedCount = computed(() => props.animeList.filter(anime => anime.isCompleted).length)
+const daysWatched = computed(() => (episodesWatched.value * EPISODE_MINUTES / MINUTES_PER_DAY).toFixed(1))
 
 const genreDistribution = computed(() => {
   const genreCounts: Record<string, number> = {}
@@ -110,6 +105,14 @@ async function confirmDeleteAccount() {
       <div class="stat-card">
         <span class="stat-label">DÍAS VISTOS</span>
         <span class="stat-value">{{ daysWatched }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">EN EMISIÓN</span>
+        <span class="stat-value">{{ currentlyWatching }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">COMPLETADAS</span>
+        <span class="stat-value">{{ completedCount }}</span>
       </div>
     </div>
 

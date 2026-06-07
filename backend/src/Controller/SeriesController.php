@@ -76,6 +76,9 @@ class SeriesController extends AbstractController
         $seriesData = json_decode($request->getContent(), true);
         $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
         $seriesToDelete = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $series]);
+        if (!$seriesToDelete) {
+            return $this->json(['error' => 'Anime no encontrado'], Response::HTTP_NOT_FOUND);
+        }
 
         $this->entityManager->remove($seriesToDelete);
         $this->entityManager->flush();
@@ -246,6 +249,9 @@ class SeriesController extends AbstractController
         $seriesData = json_decode($request->getContent(), true);
         $foundSeries = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
         $seriesToChange = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
+        if (!$seriesToChange) {
+            return $this->json(['error' => 'Anime no encontrado'], Response::HTTP_NOT_FOUND);
+        }
         $seriesToChange->setIsFavourite(!$seriesToChange->IsFavourite());
         $this->entityManager->flush();
 
