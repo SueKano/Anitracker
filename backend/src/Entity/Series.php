@@ -263,7 +263,7 @@ class Series extends AbstractEntity
             'portraitUrl'          => $media['coverImage']['extraLarge'],
             'airingStatus'         => $media['status'],
             'totalEpisodes'        => $media['episodes'] ?? 0,
-            'currentAiringEpisode' => $media['nextAiringEpisode']['episode'] ?? 0,
+            'currentAiringEpisode' => ($media['nextAiringEpisode']['episode'] ?? 1) - 1,
             'airingDay'            => $airingDay,
             'genres'               => $media['genres'] ?? [],
             'source'               => $media['source'] ?? '',

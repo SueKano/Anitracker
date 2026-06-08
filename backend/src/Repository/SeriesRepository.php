@@ -19,10 +19,10 @@ class SeriesRepository extends ServiceEntityRepository
     public function findAiringSeriesForAutoRefresh(): array
     {
         return $this->createQueryBuilder('s')
-            ->where('s.airingStatus = :releasing AND s.airingDay = :airingDay AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt < :today)')
+            ->where('s.airingStatus = :releasing AND s.airingDay = :airingDay AND (s.nextAiringAt IS NULL OR s.nextAiringAt <= :now)')
             ->setParameter('releasing', SeriesStatus::RELEASING->value)
             ->setParameter('airingDay', strtoupper(new \DateTime()->format('l')))
-            ->setParameter('today', new \DateTime('today'))
+            ->setParameter('now', new \DateTimeImmutable('@' . time()))
             ->getQuery()
             ->getResult();
     }
