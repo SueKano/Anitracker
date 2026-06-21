@@ -1,36 +1,32 @@
 import type { Anime } from '../types/Anime'
 
 export interface AnimeApiPayload {
-  anilistId?: number
-  id?: number
-  romajiName?: string
-  title?: string
-  titleJp?: string
-  cover?: string
-  portraitUrl?: string
-  totalEpisodes?: number
-  total?: number
-  currentAiringEpisode?: number
-  aired?: number
-  airingStatus?: string
+  anilistId: number
+  romajiName: string
+  portraitUrl?: string | null
+  totalEpisodes: number
+  currentAiringEpisode: number
+  airingStatus: string
+  isAdult: boolean
   airingDay?: string | null
   genres?: string[]
   source?: string
-  seasonYear?: number
-  season?: string
+  seasonYear?: number | null
+  season?: string | null
   format?: string
 }
 
 export function mapAnimeFromApi(payload: AnimeApiPayload): Anime {
   return {
-    id: payload.anilistId ?? payload.id ?? 0,
-    title: payload.romajiName || payload.title || '',
-    cover: payload.cover ?? payload.portraitUrl ?? '',
+    id: payload.anilistId,
+    title: payload.romajiName,
+    cover: payload.portraitUrl ?? '',
     progress: 0,
-    total: payload.totalEpisodes ?? payload.total ?? 0,
-    aired: payload.currentAiringEpisode ?? payload.aired ?? 0,
+    total: payload.totalEpisodes,
+    aired: payload.currentAiringEpisode,
     airing: payload.airingStatus === 'RELEASING',
-    airingStatus: payload.airingStatus ?? '',
+    airingStatus: payload.airingStatus,
+    isAdult: payload.isAdult,
     favorite: false,
     dayOfWeek: payload.airingDay ?? null,
     genre: (payload.genres ?? []).join(', '),

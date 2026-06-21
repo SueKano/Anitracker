@@ -1,8 +1,9 @@
 import { useToast } from './useToast'
+import { t, errorMessage } from '../i18n'
+import type { ApiError } from '../types/Api'
 
 export function useAccount() {
   const toast = useToast()
-
   async function deleteAccount(): Promise<boolean> {
     try {
       const response = await fetch('/api/deleteAccount', {
@@ -11,12 +12,12 @@ export function useAccount() {
         credentials: 'include'
       })
       if (!response.ok) {
-        toast.error('No se pudo borrar la cuenta')
+        toast.error(t('toast.deleteAccountError'))
         return false
       }
       return true
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }
@@ -32,15 +33,15 @@ export function useAccount() {
         body: formData,
         credentials: 'include'
       })
-      const data = await response.json()
+      const data = await response.json() as ApiError
       if (!response.ok) {
-        toast.error(data.error)
+        toast.error(errorMessage(data.errorCode))
         return false
       }
-      toast.success('Perfil actualizado')
+      toast.success(t('toast.profileUpdated'))
       return true
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }
@@ -53,15 +54,15 @@ export function useAccount() {
         body: JSON.stringify({ currentPassword, newPassword }),
         credentials: 'include'
       })
-      const data = await response.json()
+      const data = await response.json() as ApiError
       if (!response.ok) {
-        toast.error(data.error)
+        toast.error(errorMessage(data.errorCode))
         return false
       }
-      toast.success('Contraseña actualizada')
+      toast.success(t('toast.passwordUpdated'))
       return true
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }

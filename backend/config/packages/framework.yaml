@@ -6,8 +6,9 @@ framework:
 
     # Note that the session will be started ONLY if you read or write from it.
     session:
-        cookie_lifetime: 604800
-        gc_maxlifetime: 604800
+        handler_id: Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler
+        cookie_lifetime: 1209600
+        gc_maxlifetime: 1209600
         cookie_secure: auto
         cookie_samesite: lax
 
@@ -16,7 +17,11 @@ framework:
             anilist.client:
                 base_uri: 'https://graphql.anilist.co'
                 headers:
-                    User-Agent: 'AniTracker/1.0 (https://github.com/SueKano/anitracker)'
+                    User-Agent: 'AniTracker/2.0 (https://github.com/SueKano/anitracker)'
+            jikan.client:
+                base_uri: 'https://api.jikan.moe/v4/'
+                headers:
+                    User-Agent: 'AniTracker/2.0 (https://github.com/SueKano/anitracker)'
 
     #esi: true
     #fragments: true

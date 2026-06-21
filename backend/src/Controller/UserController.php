@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Entity\UserSeries;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
@@ -26,7 +27,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 class UserController extends AbstractController
 {
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly UserPasswordHasherInterface $passwordHasher,
-                                private readonly ClientRegistry         $clientRegistry, private readonly ValidatorInterface $validator,
+                                private readonly ClientRegistry $clientRegistry, private readonly ValidatorInterface $validator,
                                 private readonly TokenStorageInterface  $tokenStorage,
                                 #[Target('registrationLimiter')] private readonly RateLimiterFactoryInterface $registrationLimiter,
                                 #[Target('passwordChangeLimiter')] private readonly RateLimiterFactoryInterface $passwordChangeLimiter,
@@ -54,10 +55,10 @@ class UserController extends AbstractController
         if (count($errors) > 0) {
             foreach ($errors as $error) {
                 if ($error->getConstraint() instanceof UniqueEntity) {
-                    return $this->json(['error' => 'Los datos introducidos no son válidos.'], Response::HTTP_BAD_REQUEST);
+                    return $this->json(['errorCode' => ErrorCode::INVALID_INPUT->value], Response::HTTP_BAD_REQUEST);
                 }
             }
-            return $this->json(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+            return $this->json(['errorCode' => ErrorCode::VALIDATION_FAILED->value], Response::HTTP_BAD_REQUEST);
         }
 
         $this->entityManager->persist($user);
@@ -79,7 +80,7 @@ class UserController extends AbstractController
     {
         $profileImage = $user->getProfileImage() ? $cdnProfileImages . '/avatars/' . $user->getProfileImage() : null;
 
-        return new JsonResponse(['username' => $user->getUsername(), 'profileImage' => $profileImage]);
+        return new JsonResponse(['username' => $user->getUsername(), 'profileImage' => $profileImage, 'isAdmin' => $user->isSuperAdmin()]);
     }
 
     #[Route('/api/deleteAccount', name: 'delete_user', methods: ['POST'])]
@@ -108,7 +109,7 @@ class UserController extends AbstractController
             ]);
 
             if (count($errors) > 0) {
-                return new JsonResponse(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+                return new JsonResponse(['errorCode' => ErrorCode::VALIDATION_FAILED->value], Response::HTTP_BAD_REQUEST);
             }
 
             $oldKey = $user->getProfileImage();
@@ -131,13 +132,13 @@ class UserController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
         if (!isset($data['currentPassword'], $data['newPassword'])) {
-            return new JsonResponse(['error' => 'Rellena todos los campos.'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['errorCode' => ErrorCode::MISSING_FIELDS->value], Response::HTTP_BAD_REQUEST);
         }
 
         if ($error = $this->checkRateLimit($this->passwordChangeLimiter, $user->getUserIdentifier())) return $error;
 
         if (!$this->passwordHasher->isPasswordValid($user, $data['currentPassword'])) {
-            return new JsonResponse(['error' => 'La contraseña actual no es correcta.'], Response::HTTP_FORBIDDEN);
+            return new JsonResponse(['errorCode' => ErrorCode::WRONG_CURRENT_PASSWORD->value], Response::HTTP_FORBIDDEN);
         }
 
         if ($error = $this->validatePlainPasswordLength($data['newPassword'])) return $error;
@@ -170,7 +171,7 @@ class UserController extends AbstractController
     private function validatePlainPasswordLength(string $plainPassword): ?JsonResponse
     {
         if (mb_strlen($plainPassword) < 8) {
-            return new JsonResponse(['error' => 'La contraseña debe tener al menos 8 caracteres.'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse(['errorCode' => ErrorCode::PASSWORD_TOO_SHORT->value], Response::HTTP_BAD_REQUEST);
         }
 
         return null;
@@ -180,7 +181,7 @@ class UserController extends AbstractController
     {
         $errors = $this->validator->validate($entity);
         if (count($errors) > 0) {
-            return $this->json(['error' => (string) $errors], Response::HTTP_BAD_REQUEST);
+            return $this->json(['errorCode' => ErrorCode::VALIDATION_FAILED->value], Response::HTTP_BAD_REQUEST);
         }
 
         return null;
@@ -189,7 +190,7 @@ class UserController extends AbstractController
     private function checkRateLimit(RateLimiterFactoryInterface $limiter, string $key): ?JsonResponse
     {
         if (!$limiter->create($key)->consume()->isAccepted()) {
-            return new JsonResponse(['error' => 'Demasiados intentos. Inténtalo más tarde.'], Response::HTTP_TOO_MANY_REQUESTS);
+            return new JsonResponse(['errorCode' => ErrorCode::RATE_LIMITED->value], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
         return null;

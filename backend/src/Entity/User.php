@@ -36,6 +36,10 @@ class User extends AbstractEntity implements UserInterface, PasswordAuthenticate
     private ?string $googleId = null;
     #[ORM\OneToMany(targetEntity: UserSeries::class, mappedBy: 'user', cascade: ['remove'], orphanRemoval: true)]
     private Collection $userSeries;
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $roles = [];
+
     public function __construct()
     {
         parent::__construct();
@@ -99,7 +103,12 @@ class User extends AbstractEntity implements UserInterface, PasswordAuthenticate
 
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return array_unique([...$this->roles, 'ROLE_USER']);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return in_array('ROLE_SUPER_ADMIN', $this->getRoles());
     }
 
     public function getUserIdentifier(): string

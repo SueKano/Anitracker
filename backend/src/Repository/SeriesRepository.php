@@ -19,9 +19,10 @@ class SeriesRepository extends ServiceEntityRepository
     public function findAiringSeriesForAutoRefresh(): array
     {
         return $this->createQueryBuilder('s')
-            ->where('s.airingStatus = :releasing AND s.airingDay = :airingDay AND (s.nextAiringAt IS NULL OR s.nextAiringAt <= :now)')
+            ->where('s.airingStatus = :releasing AND s.isAdult = false AND ((s.nextAiringAt IS NOT NULL AND s.nextAiringAt <= :now) OR
+                                (s.nextAiringAt IS NULL AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :staleThreshold)))')
             ->setParameter('releasing', SeriesStatus::RELEASING->value)
-            ->setParameter('airingDay', strtoupper(new \DateTime()->format('l')))
+            ->setParameter('staleThreshold', new \DateTime(SeriesRefresher::RELEASING_SERIES_TTL))
             ->setParameter('now', new \DateTimeImmutable('@' . time()))
             ->getQuery()
             ->getResult();
@@ -30,12 +31,23 @@ class SeriesRepository extends ServiceEntityRepository
     public function findFutureSeriesForAutoRefresh(): array
     {
         return $this->createQueryBuilder('s')
-            ->where('s.airingStatus = :notYetReleased AND s.airingDay = :airingDay AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt < :today)')
-            ->orWhere('s.airingStatus = :notYetReleased AND s.airingDay IS NULL AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :notYetReleasedThreshold)')
+            ->where('s.airingStatus = :notYetReleased AND s.isAdult = false AND ((s.nextAiringAt IS NOT NULL AND s.nextAiringAt <= :now) OR
+                                (s.nextAiringAt IS NULL AND (s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :notYetReleasedThreshold)))')
             ->setParameter('notYetReleased', SeriesStatus::NOT_YET_RELEASED->value)
-            ->setParameter('airingDay', strtoupper(new \DateTime()->format('l')))
-            ->setParameter('today', new \DateTime('today'))
+            ->setParameter('now', new \DateTimeImmutable('@' . time()))
             ->setParameter('notYetReleasedThreshold', new \DateTime(SeriesRefresher::NOT_YET_RELEASED_TTL))
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findAdultSeriesForAutoRefresh(): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.isAdult = true')
+            ->andWhere('(s.airingStatus != :finished OR s.totalEpisodes IS NULL OR s.totalEpisodes = 0)')
+            ->andWhere('(s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :adultSeriesThreshold)')
+            ->setParameter('finished', SeriesStatus::FINISHED->value)
+            ->setParameter('adultSeriesThreshold', new \DateTime(SeriesRefresher::ADULT_SERIES_TTL))
             ->getQuery()
             ->getResult();
     }
@@ -43,35 +55,40 @@ class SeriesRepository extends ServiceEntityRepository
     {
         $normalizedQuery = mb_strtolower(trim($query));
         $likeQuery = '%' . addcslashes($normalizedQuery, '%_\\') . '%';
+        $prefixQuery = addcslashes($normalizedQuery, '%_\\') . '%';
 
         $sql = <<<SQL
           SELECT id
           FROM series
-          WHERE LOWER(romaji_name) ILIKE :likeQuery
-             OR LOWER(COALESCE(english_name, '')) ILIKE :likeQuery
-             OR LOWER(romaji_name) % :query
-             OR LOWER(COALESCE(english_name, '')) % :query
+          WHERE f_unaccent(LOWER(romaji_name)) ILIKE f_unaccent(:likeQuery)
+             OR f_unaccent(LOWER(COALESCE(english_name, ''))) ILIKE f_unaccent(:likeQuery)
+             OR f_unaccent(LOWER(romaji_name)) % f_unaccent(:query)
+             OR f_unaccent(LOWER(COALESCE(english_name, ''))) % f_unaccent(:query)
              OR EXISTS (
                  SELECT 1 FROM jsonb_array_elements_text(synonyms) AS synonym
-                 WHERE LOWER(synonym) ILIKE :likeQuery
-                    OR LOWER(synonym) % :query
+                 WHERE f_unaccent(LOWER(synonym)) ILIKE f_unaccent(:likeQuery)
+                    OR f_unaccent(LOWER(synonym)) % f_unaccent(:query)
              )
           ORDER BY
               CASE
-                  WHEN LOWER(romaji_name) ILIKE :likeQuery
-                    OR LOWER(COALESCE(english_name, '')) ILIKE :likeQuery
-                  THEN 1
-                  ELSE 0
-              END DESC,
+                  WHEN f_unaccent(LOWER(romaji_name)) ILIKE f_unaccent(:prefixQuery)
+                    OR f_unaccent(LOWER(COALESCE(english_name, ''))) ILIKE f_unaccent(:prefixQuery)
+                  THEN 0 ELSE 1
+              END,
+              CASE
+                  WHEN f_unaccent(LOWER(romaji_name)) ILIKE f_unaccent(:likeQuery)
+                    OR f_unaccent(LOWER(COALESCE(english_name, ''))) ILIKE f_unaccent(:likeQuery)
+                  THEN 0 ELSE 1
+              END,
               GREATEST(
-                  similarity(LOWER(romaji_name), :query),
-                  similarity(LOWER(COALESCE(english_name, '')), :query)
+                  similarity(f_unaccent(LOWER(romaji_name)), f_unaccent(:query)),
+                  similarity(f_unaccent(LOWER(COALESCE(english_name, ''))), f_unaccent(:query)) * 0.8
               ) DESC
           LIMIT :limit
       SQL;
 
         $orderedIds = $this->getEntityManager()->getConnection()
-            ->executeQuery($sql, ['query' => $normalizedQuery, 'likeQuery' => $likeQuery, 'limit' => $limit], ['limit' => ParameterType::INTEGER])
+            ->executeQuery($sql, ['query' => $normalizedQuery, 'likeQuery' => $likeQuery, 'prefixQuery' => $prefixQuery, 'limit' => $limit], ['limit' => ParameterType::INTEGER])
             ->fetchFirstColumn();
 
         if (empty($orderedIds)) {

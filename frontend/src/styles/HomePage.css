@@ -76,6 +76,12 @@
   z-index: 70;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   max-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-results-scroll {
+  min-height: 0;
   overflow-y: auto;
   mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent);
 }
@@ -136,6 +142,7 @@
 
 .search-load-more {
   width: 100%;
+  flex-shrink: 0;
   padding: 9px 12px;
   font-size: 12px;
   font-weight: 600;
@@ -143,11 +150,23 @@
   background: none;
   border-top: 1px solid var(--border);
   text-align: center;
-  transition: color 0.15s;
+  transition: color 0.15s, background 0.15s;
 }
 
+.search-load-more:hover,
 .search-load-more:active {
   color: var(--text);
+  background: rgba(176, 164, 122, 0.06);
+}
+
+.search-limited {
+  flex-shrink: 0;
+  padding: 9px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+  text-align: center;
 }
 
 .avatar-btn {
@@ -391,6 +410,7 @@
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
+  color: var(--text);
   background: none;
   transition: background 0.1s;
 }
@@ -481,3 +501,67 @@
 @media (min-width: 768px) {
   .nav { max-width: 480px; }
 }
+
+.adult-gate-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.adult-gate {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.adult-gate-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 10px;
+}
+
+.adult-gate-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.adult-gate-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.adult-gate-cancel,
+.adult-gate-confirm {
+  flex: 1;
+  padding: 11px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: opacity 0.1s, background 0.1s;
+}
+
+.adult-gate-cancel {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  color: var(--text-2);
+}
+
+.adult-gate-confirm {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.adult-gate-confirm:active { opacity: 0.85; }

@@ -1,70 +1,32 @@
-const SEASON_LABELS: Record<string, string> = {
-  WINTER: 'Invierno',
-  SPRING: 'Primavera',
-  SUMMER: 'Verano',
-  FALL: 'Otoño',
-}
+import { i18n, t } from '../i18n'
 
-const FORMAT_LABELS: Record<string, string> = {
-  TV: 'TV',
-  TV_SHORT: 'TV corto',
-  MOVIE: 'Película',
-  SPECIAL: 'Especial',
-  OVA: 'OVA',
-  ONA: 'ONA',
-  MUSIC: 'Música',
-}
-
-const SOURCE_LABELS: Record<string, string> = {
-  ORIGINAL: 'Original',
-  MANGA: 'Manga',
-  LIGHT_NOVEL: 'Novela ligera',
-  VISUAL_NOVEL: 'Novela visual',
-  VIDEO_GAME: 'Videojuego',
-  NOVEL: 'Novela',
-  ANIME: 'Anime',
-  WEB_NOVEL: 'Novela web',
-}
-
-const DAY_LABELS: Record<string, string> = {
-  MONDAY: 'Lunes',
-  TUESDAY: 'Martes',
-  WEDNESDAY: 'Miércoles',
-  THURSDAY: 'Jueves',
-  FRIDAY: 'Viernes',
-  SATURDAY: 'Sábado',
-  SUNDAY: 'Domingo',
-}
-
-const GENRES_LABELS: Record<string, string> = {
-  Music: 'Música',
-  Comedy: 'Comedia',
-  Adventure: 'Aventura',
-  Action: 'Acción',
-  Fantasy: 'Fantasía',
-  Mystery: 'Misterio',
-  Psychological: 'Psicológico',
-  Sports: 'Deportes',
-  'Sci-Fi': 'Ciencia ficción',
-  Thriller: 'Suspense',
-  'Mahou Shoujo': 'Chicas mágicas',
-}
-
-function translate(map: Record<string, string>, value: string | null | undefined): string {
+function label(category: string, value: string | null | undefined): string {
   if (!value) return ''
-  return map[value.toUpperCase()] ?? value
+  const key = `labels.${category}.${value}`
+  return i18n.global.te(key, i18n.global.locale.value) ? t(key) : value
 }
 
-export const translateSeason = (value: string | null | undefined) => translate(SEASON_LABELS, value)
-export const translateFormat = (value: string | null | undefined) => translate(FORMAT_LABELS, value)
-export const translateSource = (value: string | null | undefined) => translate(SOURCE_LABELS, value)
-export const translateDay    = (value: string | null | undefined) => translate(DAY_LABELS, value)
-export const translateGenres    = (value: string | null | undefined) => {
+export const translateSeason = (value: string | null | undefined) =>
+  label('season', value?.toUpperCase())
+export const translateFormat = (value: string | null | undefined) =>
+  label('format', value?.toUpperCase())
+export const translateSource = (value: string | null | undefined) =>
+  label('source', value?.toUpperCase())
+export const translateDay = (value: string | null | undefined) =>
+  label('day', value?.toUpperCase())
+export const translateDayAbbr = (value: string | null | undefined) =>
+  label('dayAbbr', value?.toUpperCase())
+
+export const translateGenre = (value: string | null | undefined): string =>
+  label('genres', value?.trim())
+
+export const translateGenres = (value: string | null | undefined): string => {
   if (!value) return ''
-  return value.split(',').map(genre => genre.trim())
-      .map(genre => GENRES_LABELS[genre] ?? genre).join(', ')
+  return value.split(',').map(genre => translateGenre(genre.trim())).join(', ')
 }
-export const translateGenre = (value: string | null | undefined): string => {
-  if (!value) return ''
-  return GENRES_LABELS[value] ?? value
+
+export type AiringStatus = 'upcoming' | 'airing' | 'finished'
+export function resolveAiringStatus(anime: { airingStatus: string; airing: boolean }): AiringStatus {
+  if (anime.airingStatus === 'NOT_YET_RELEASED') return 'upcoming'
+  return anime.airing ? 'airing' : 'finished'
 }

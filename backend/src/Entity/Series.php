@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Enum\SeriesStatus;
 use App\Repository\SeriesRepository;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
@@ -28,7 +29,7 @@ class Series extends AbstractEntity
 
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
-    private ?int $totalEpisodes = null;
+    private int $totalEpisodes = 0;
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     private int $currentAiringEpisode = 0;
@@ -68,6 +69,35 @@ class Series extends AbstractEntity
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTime $lastRefreshedAt = null;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
+    private bool $isAdult = false;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private ?int $idMal = null;
+
+    public function getIdMal(): ?int
+    {
+        return $this->idMal;
+    }
+
+    public function setIdMal(?int $idMal): Series
+    {
+        $this->idMal = $idMal;
+        return $this;
+    }
+
+    public function getIsAdult(): bool
+    {
+        return $this->isAdult;
+    }
+
+    public function setIsAdult(bool $isAdult): Series
+    {
+        $this->isAdult = $isAdult;
+        return $this;
+    }
 
     public function getLastRefreshedAt(): ?\DateTime
     {
@@ -214,12 +244,12 @@ class Series extends AbstractEntity
         return $this;
     }
 
-    public function getTotalEpisodes(): ?int
+    public function getTotalEpisodes(): int
     {
         return $this->totalEpisodes;
     }
 
-    public function setTotalEpisodes(?int $totalEpisodes): Series
+    public function setTotalEpisodes(int $totalEpisodes): Series
     {
         $this->totalEpisodes = $totalEpisodes;
         return $this;
@@ -247,54 +277,49 @@ class Series extends AbstractEntity
         return $this;
     }
 
-    public static function mapAnilistMediaToArray(array $media): array
+    public function mapAnilistData(array $media): self
     {
-        $airingDay = null;
-        if ($media['status'] === SeriesStatus::RELEASING->value && !empty($media['airingSchedule']['nodes'][0]['airingAt'])) {
-            $day = new \DateTimeImmutable('@' . $media['airingSchedule']['nodes'][0]['airingAt'])
-                ->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l');
-            $airingDay = strtoupper($day);
+        $this->anilistId = $media['id'];
+        $this->romajiName = $media['title']['romaji'];
+        $this->englishName = $media['title']['english'] ?? '';
+        $this->portraitUrl = $media['coverImage']['extraLarge'];
+        $this->airingStatus = $media['status'];
+        $this->genres = $media['genres'] ?? [];
+        $this->source = $media['source'] ?? '';
+        $this->season = $media['season'] ?? null;
+        $this->seasonYear = $media['seasonYear'] ?? 0;
+        $this->format = $media['format'] ?? '';
+        $this->synonyms = $media['synonyms'] ?? [];
+        $this->idMal = $media['idMal'] ?? null;
+        $this->isAdult = $media['isAdult'] ?? false;
+        $this->totalEpisodes = max($this->totalEpisodes, self::resolveTotalEpisodes($media));
+
+        $next = $media['nextAiringEpisode'] ?? null;
+        $this->currentAiringEpisode = match (true) {
+            $next !== null => $next['episode'] - 1,
+            $this->airingStatus === SeriesStatus::FINISHED->value => $this->totalEpisodes,
+            default => 0,
+        };
+
+        $airingAt = $next['airingAt'] ?? null;
+        $this->nextAiringAt = $airingAt ? new \DateTime()->setTimestamp($airingAt) : null;
+        $this->airingDay = ($airingAt && !$this->isAdult && $this->airingStatus === SeriesStatus::RELEASING->value) ?
+            strtoupper(new DateTimeImmutable('@'.$airingAt)->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l')) : null;
+        return $this;
+    }
+
+    public static function createSeriesFromAnilistData(array $data): self
+    {
+        return new self()->mapAnilistData($data);
+    }
+
+    public static function resolveTotalEpisodes(array $data): int
+    {
+        if ($data['episodes'] > 0) {
+            return $data['episodes'];
         }
+        $nodes = $data['airingSchedule']['nodes'] ?? [];
 
-        return [
-            'anilistId'            => $media['id'],
-            'romajiName'           => $media['title']['romaji'],
-            'englishName'          => $media['title']['english'] ?? '',
-            'portraitUrl'          => $media['coverImage']['extraLarge'],
-            'airingStatus'         => $media['status'],
-            'totalEpisodes'        => $media['episodes'] ?? 0,
-            'currentAiringEpisode' => ($media['nextAiringEpisode']['episode'] ?? 1) - 1,
-            'airingDay'            => $airingDay,
-            'genres'               => $media['genres'] ?? [],
-            'source'               => $media['source'] ?? '',
-            'season'               => $media['season'] ?? null,
-            'seasonYear'           => $media['seasonYear'] ?? 0,
-            'format'               => $media['format'] ?? '',
-            'synonyms'             => $media['synonyms'] ?? [],
-        ];
+        return max([0, ...array_column($nodes, 'episode')]);
     }
-
-    public static function createSeriesFromAnilistData(array $directData): self
-    {
-        $dto = self::mapAnilistMediaToArray($directData);
-
-        $newSeries = new self();
-        $newSeries->setAnilistId($dto['anilistId']);
-        $newSeries->setRomajiName($dto['romajiName']);
-        $newSeries->setEnglishName($dto['englishName']);
-        $newSeries->setPortraitUrl($dto['portraitUrl']);
-        $newSeries->setAiringStatus($dto['airingStatus']);
-        $newSeries->setTotalEpisodes($dto['totalEpisodes']);
-        $newSeries->setCurrentAiringEpisode($dto['currentAiringEpisode']);
-        $newSeries->setAiringDay($dto['airingDay']);
-        $newSeries->setGenres($dto['genres']);
-        $newSeries->setSource($dto['source']);
-        $newSeries->setSeason($dto['season']);
-        $newSeries->setSeasonYear($dto['seasonYear']);
-        $newSeries->setFormat($dto['format']);
-        $newSeries->setSynonyms($dto['synonyms']);
-
-        return $newSeries;
-    }
-
 }

@@ -19,10 +19,7 @@ export function useToast() {
     }, duration)
   }
 
-  return {
-    toasts: state.toasts,
-    error: (msg: string) => show(msg, 'error'),
-    success: (msg: string) => show(msg, 'success'),
-    warning: (msg: string) => show(msg, 'warning'),
+  return { toasts: state.toasts, error: (message: string) => show(message, 'error'), success: (message: string) => show(message, 'success'),
+    warning: (message: string) => show(message, 'warning'),
   }
 }

@@ -1,0 +1,364 @@
+{
+  "meta": {
+    "title": "AniTracker — Track your anime",
+    "description": "AniTracker is a personal anime tracking app: check your airing calendar, save your favorites and see your stats on your profile."
+  },
+  "nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "favorites": "Favorites",
+    "profile": "Profile"
+  },
+  "common": {
+    "recapCta": "See your year recap",
+    "completed": "Completed",
+    "back": "Back",
+    "save": "Save",
+    "cancel": "Cancel"
+  },
+  "adultGate": {
+    "title": "Adult content",
+    "message": "This series contains adult content. You must be of legal age in your country to view it. By continuing, you confirm that you are of legal age.",
+    "confirm": "I am of legal age",
+    "cancel": "Cancel"
+  },
+  "home": {
+    "searchPlaceholder": "Search anime...",
+    "searching": "Searching...",
+    "loadMore": "Load more results",
+    "searchLimited": "Online search unavailable right now; showing your series",
+    "profileAria": "Profile",
+    "optionsAria": "Options",
+    "delete": "Delete",
+    "empty": "Your list is empty",
+    "episodesShort": "{count} ep.",
+    "status": {
+      "upcoming": "Upcoming",
+      "airing": "Airing",
+      "finished": "Completed"
+    },
+    "filters": {
+      "watching": "Watching",
+      "completed": "Completed",
+      "all": "All"
+    }
+  },
+  "calendar": {
+    "title": "Calendar",
+    "series": "series | series",
+    "behind": "{count} behind",
+    "upToDate": "Up to date",
+    "empty": "Nothing airing this day"
+  },
+  "favorites": {
+    "title": "Favorites",
+    "filterGenreAria": "Filter by genre",
+    "genreDefault": "Genre",
+    "sortAria": "Sort",
+    "all": "All",
+    "sort": {
+      "default": "Default",
+      "alpha": "Alphabetical",
+      "progress": "Progress"
+    },
+    "noMatches": "No matches",
+    "tryAnotherFilter": "Try a different filter",
+    "emptyTitle": "You have no favorites yet",
+    "emptyHint": "Mark them from each anime's detail"
+  },
+  "detail": {
+    "back": "BACK",
+    "pendingEpisodes": "{count} EP. PENDING",
+    "seasonLabel": "SEASON",
+    "yearLabel": "YEAR",
+    "formatLabel": "FORMAT",
+    "genreLabel": "GENRE",
+    "originLabel": "SOURCE",
+    "progress": "PROGRESS",
+    "episodes": "EPISODES",
+    "statusLabel": "STATUS",
+    "airing": "Airing",
+    "finished": "Finished",
+    "upcoming": "Upcoming",
+    "addAnime": "ADD ANIME",
+    "addFavorite": "ADD TO FAVORITES",
+    "editAiredEpisode": "EDIT AIRED EPISODE",
+    "airedEpisodeLabel": "Last aired episode",
+    "info": "Information"
+  },
+  "login": {
+    "subCreate": "Create your account",
+    "subLogin": "Your progress, your pace",
+    "userLabelRegister": "Username",
+    "userLabelLogin": "Username",
+    "userPlaceholderRegister": "Choose a username",
+    "userPlaceholderLogin": "Your username",
+    "emailLabel": "Email",
+    "emailHint": "— not verified, you can make it up",
+    "emailPlaceholder": "you{'@'}email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholderRegister": "Create a password",
+    "passwordPlaceholderLogin": "Your password",
+    "showPasswordAria": "Show password",
+    "submitRegister": "Create account",
+    "submitLogin": "Sign in",
+    "orContinue": "or continue with",
+    "google": "Continue with Google",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "createAccount": "Create account",
+    "goLogin": "Sign in"
+  },
+  "profile": {
+    "backAria": "Back",
+    "title": "PROFILE",
+    "editAria": "Edit profile",
+    "stats": {
+      "episodesWatched": "EP. WATCHED",
+      "series": "SERIES",
+      "favorites": "FAVORITES",
+      "daysWatched": "DAYS WATCHED",
+      "airing": "AIRING",
+      "completed": "COMPLETED"
+    },
+    "topGenres": "MOST WATCHED GENRES",
+    "recentActivity": "RECENT ACTIVITY",
+    "noActivity": "No recent activity",
+    "account": "ACCOUNT",
+    "changePassword": "Change password",
+    "privacyPolicy": "Privacy policy",
+    "contactDonations": "Contact and donations",
+    "language": "Language",
+    "deleteAccount": "Delete account",
+    "confirmDelete": "Are you sure you want to delete your account?",
+    "cancel": "Cancel",
+    "delete": "Delete"
+  },
+  "editProfile": {
+    "backAria": "Back",
+    "titleProfile": "Edit profile",
+    "titlePassword": "Change password",
+    "changePhoto": "Change photo",
+    "username": "Username",
+    "usernamePlaceholder": "Your name",
+    "saving": "Saving...",
+    "saveChanges": "Save changes",
+    "currentPassword": "Current password",
+    "currentPasswordPlaceholder": "Your current password",
+    "newPassword": "New password",
+    "newPasswordPlaceholder": "At least 8 characters",
+    "confirmPassword": "Confirm password",
+    "confirmPasswordPlaceholder": "Repeat the new password",
+    "showPasswordAria": "Show password",
+    "hidePasswordAria": "Hide password",
+    "changing": "Changing...",
+    "changePassword": "Change password"
+  },
+  "recap": {
+    "year": "Your {year} recap",
+    "closeAria": "Close",
+    "introTagline": "Welcome to your anirecap",
+    "introHint": "Tap to start",
+    "topSeasonLabel": "Your most active season was",
+    "seasonTotal": "with a total of {count} series",
+    "someSeries": "Some of the series you watched",
+    "firstLastLabel": "First and last series",
+    "firstLastTitle": "Start and finish",
+    "tagFirst": "First",
+    "tagLast": "Last",
+    "paceLabel": "At your pace",
+    "paceTitle": "Your two extremes",
+    "tagFastest": "Fastest",
+    "tagSlowest": "Slowest",
+    "yourYear": "Your year",
+    "inNumbers": "In numbers",
+    "seriesCompleted": "series completed",
+    "ofAnime": "of anime",
+    "ratio": "Of the {added} series you started this year, you finished {completed} — a {percent} completion rate.",
+    "preferences": "Your preferences",
+    "byFormat": "By format",
+    "favGenres": "Favorite genres",
+    "slideAria": "Slide {n}",
+    "prevAria": "Previous",
+    "nextAria": "Next"
+  },
+  "contact": {
+    "backAria": "Back",
+    "title": "Contact",
+    "lede1": "If you found a bug, have a suggestion or a proposal, you can write to me at the following email",
+    "lede2": "I'll reply to your email as soon as possible depending on my availability",
+    "supportTitle": "Support the project",
+    "supportBody": "If it has been useful and you want to buy me a coffee, you can do it here.",
+    "donatePaypal": "Donate with PayPal"
+  },
+  "privacy": {
+    "backAria": "Back",
+    "titleLine1": "Privacy",
+    "titleLine2": "policy",
+    "goToContact": "Go to the contact page",
+    "lastUpdated": "Last updated: {date}",
+    "lastUpdatedDate": "June 18, 2026",
+    "sections": {
+      "01": {
+        "title": "Who is responsible",
+        "body": "The controller of your data is Jorge Hernández, an individual who develops this project on a personal basis. You can contact us at suekanoo{'@'}gmail.com for any matter related to your data."
+      },
+      "02": {
+        "title": "Data we collect",
+        "body": "For the application to work we store your username, your email, the profile picture you upload and the list of series you follow. If you register with email and password, we store an encrypted version of your password. If you sign in with Google, we additionally store an internal identifier that Google provides to recognize you on future logins. The server also automatically logs basic technical data for each visit (IP address, date and browser) which is kept for a maximum of 30 days to detect abuse and maintain security."
+      },
+      "03": {
+        "title": "Sign in with Google",
+        "body": "If you choose to sign in with Google, we redirect you to its consent screen and only request the basic permissions (openid, email and profile). Of all that information we only keep your email and the unique identifier Google returns. We do not access your contacts, files or any other data from your Google account, and we never receive your password."
+      },
+      "04": {
+        "title": "What we use them for and on what legal basis",
+        "body": "We use your data to identify your account, keep your session and show you your own progress. The legal basis is the performance of the service you request when registering (art. 6.1.b GDPR). The profile picture is processed with your consent when you upload it (art. 6.1.a GDPR) and the minimal technical security logs under legitimate interest (art. 6.1.f GDPR). We do not analyze your activity to profile you, we do not sell data and we do not share it with advertisers."
+      },
+      "05": {
+        "title": "Services that help us",
+        "body": "To run the application we rely on providers that act as data processors: Hetzner Online GmbH (Germany) hosts the server and the database; Cloudflare, Inc. (USA) stores the profile images on R2 and routes the traffic; Google LLC (USA) acts as identity provider if you choose to sign in with Google. All of them process the data following our instructions and under contracts that comply with the GDPR."
+      },
+      "06": {
+        "title": "How your data travels",
+        "body": "Cloudflare and Google are established in the USA. International data transfers are covered by the EU-US Data Privacy Framework and, where applicable, by the Standard Contractual Clauses approved by the European Commission. Hetzner hosts the data exclusively in centers within the European Economic Area."
+      },
+      "07": {
+        "title": "How long we keep them",
+        "body": "We keep your data while your account is active. When you delete your account, we immediately remove your username, your email, your profile picture, your Google identifier if any and all your associated series. Technical backups are rotated and deleted within a maximum of 30 days."
+      },
+      "08": {
+        "title": "Minors",
+        "body": "If you are under 14 years old, you need the permission of your parents or guardians to create an account. If we discover that a person under that age has registered without that consent, we will delete the account. This limit is set by Spanish law (LOPDGDD); it is not our decision."
+      },
+      "09": {
+        "title": "Adult content",
+        "body": "AniTracker lets you search for and track series that may include adult content. Those titles come from AniList's public catalogue, from which we only obtain metadata (title, format, episode count, etc.) and cover images, which the source itself already provides censored; we neither host nor generate that content. Before showing you a title flagged as adult, we ask you to confirm that you are of the legal age required to access this type of content in your country (18 in Spain). That confirmation is stored only in your own browser's local storage so we don't ask you again on that device: it is not sent to our servers, not linked to your account, and does not involve any identity verification or additional processing of personal data. The service is not directed at minors; if you falsely confirm this statement, access to such content is your own responsibility."
+      },
+      "10": {
+        "title": "Cookies and technical storage",
+        "body": "We use a single session cookie, strictly necessary to keep you identified while you browse. We do not use analytics, advertising or third-party tracking cookies, so we do not need to ask for additional consent for them. We also store a couple of technical preferences in your browser's local storage (your language and, where applicable, your age confirmation for adult content). These are not tracking cookies and are not shared with third parties."
+      },
+      "11": {
+        "title": "Your rights",
+        "body": "You can access, rectify and erase your data by editing your profile or deleting your account from the settings at any time. If your account has a password, you can also change it there. If you signed in with Google, you can additionally revoke the application's access from myaccount.google.com in the connected apps section. If you need to exercise any other right (objection, restriction, portability), write to us from the contact page."
+      },
+      "12": {
+        "title": "Complaints",
+        "body": "You have the right to file a complaint with the Spanish Data Protection Agency (www.aepd.es) if you consider that the processing of your data does not comply with the regulations. Beforehand we would appreciate it if you contact us to try to resolve it directly."
+      },
+      "13": {
+        "title": "Contact",
+        "body": "If you have questions about how we process your data or want to exercise any of your rights, you can write to us from the contact page and we will reply as soon as possible."
+      }
+    }
+  },
+  "toast": {
+    "needLoginSearch": "You need to be logged in to search series",
+    "searchError": "Error searching anime",
+    "deleteAccountError": "Could not delete the account",
+    "connectionError": "Connection error with the server",
+    "connectionErrorShort": "Connection error",
+    "profileUpdated": "Profile updated",
+    "passwordUpdated": "Password updated",
+    "animeLoadError": "Could not load the anime information",
+    "favAdded": "Series added to favorites",
+    "favRemoved": "Series removed from favorites",
+    "recapError": "Could not load the recap",
+    "sessionError": "Error verifying your session",
+    "wrongCredentials": "The provided credentials are not correct",
+    "accountCreateError": "Error creating the account",
+    "accountCreated": "Account created successfully",
+    "seriesLoadError": "Could not load your series",
+    "movieFinished": "Movie finished",
+    "seriesFinished": "Series finished",
+    "episodeAdded": "Episode added",
+    "adultEpisodeUpdated": "Aired episode updated",
+    "seriesDeleteError": "Could not delete the series",
+    "activityLoadError": "Could not load recent activity",
+    "recapNeed8": "You need 8 series to create your recap",
+    "passwordsDontMatch": "Passwords do not match",
+    "passwordTooShort": "The password must be at least 8 characters",
+    "fillAllFields": "Please fill in all fields"
+  },
+  "errors": {
+    "unknown": "An unexpected error occurred",
+    "series_not_found": "Anime not found",
+    "series_not_in_list": "This series isn't in your list",
+    "series_already_completed": "This series is already complete",
+    "series_not_adult": "Only adult series episodes can be updated",
+    "series_not_yet_released": "You can't track an anime that hasn't aired yet",
+    "series_lookup_failed": "Couldn't reach AniList, please try again in a few minutes",
+    "episode_not_aired": "This episode hasn't aired yet",
+    "episode_verification_failed": "Couldn't verify the episode, try again in a few minutes",
+    "invalid_value": "Invalid value",
+    "rate_limited": "Too many requests. Please wait a moment.",
+    "access_suspended_abuse": "Access temporarily suspended due to abuse",
+    "access_suspended_12h": "Access suspended for 12 hours due to abuse",
+    "invalid_input": "The data entered is not valid",
+    "validation_failed": "The data entered is not valid",
+    "missing_fields": "Fill in all fields",
+    "wrong_current_password": "The current password is incorrect",
+    "password_too_short": "The password must be at least 8 characters"
+  },
+  "activity": {
+    "addedPrefix": "You added ",
+    "addedSuffix": " to your list",
+    "finishedPrefix": "You finished ",
+    "watchedPrefix": "You watched episode {count} of "
+  },
+  "time": {
+    "lessThanDay": "less than a day",
+    "day": "day | days",
+    "hour": "hour | hours",
+    "minute": "minute | minutes"
+  },
+  "labels": {
+    "season": {
+      "WINTER": "Winter",
+      "SPRING": "Spring",
+      "SUMMER": "Summer",
+      "FALL": "Fall"
+    },
+    "format": {
+      "TV": "TV",
+      "TV_SHORT": "TV Short",
+      "MOVIE": "Movie",
+      "SPECIAL": "Special",
+      "OVA": "OVA",
+      "ONA": "ONA",
+      "MUSIC": "Music"
+    },
+    "source": {
+      "ORIGINAL": "Original",
+      "MANGA": "Manga",
+      "LIGHT_NOVEL": "Light Novel",
+      "VISUAL_NOVEL": "Visual Novel",
+      "VIDEO_GAME": "Video Game",
+      "NOVEL": "Novel",
+      "ANIME": "Anime",
+      "WEB_NOVEL": "Web Novel"
+    },
+    "day": {
+      "MONDAY": "Monday",
+      "TUESDAY": "Tuesday",
+      "WEDNESDAY": "Wednesday",
+      "THURSDAY": "Thursday",
+      "FRIDAY": "Friday",
+      "SATURDAY": "Saturday",
+      "SUNDAY": "Sunday"
+    },
+    "dayAbbr": {
+      "MONDAY": "M",
+      "TUESDAY": "T",
+      "WEDNESDAY": "W",
+      "THURSDAY": "T",
+      "FRIDAY": "F",
+      "SATURDAY": "S",
+      "SUNDAY": "S"
+    },
+    "genres": {
+      "Mahou Shoujo": "Magical Girls"
+    }
+  }
+}

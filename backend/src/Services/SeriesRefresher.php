@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Entity\Series;
 use App\Enum\SeriesStatus;
 use App\Exception\AnilistUnavailableException;
+use App\Exception\JikanUnavailableException;
 use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -12,61 +13,51 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class SeriesRefresher
 {
     public const string NOT_YET_RELEASED_TTL = '-7 days';
+    public const string ADULT_SERIES_TTL = '-7 days';
+    public const string RELEASING_SERIES_TTL = '-6 hours';
 
-    private const string QUERY = 'query($id:Int){
-        Media(id:$id,type:ANIME){
-            status
-            episodes
-            nextAiringEpisode{episode airingAt}
-        }
-    }';
-
-    public function __construct(#[Target('anilist.client')] private readonly HttpClientInterface $httpClient)
+    public function __construct(private readonly AnilistApiClient $anilistClient, #[Target('jikan.client')] private readonly HttpClientInterface $jikanClient)
     {
     }
 
-    public function refresh(Series $series): void
+    public function refreshFromAnilist(Series $series): void
     {
-        try {
-            $response = $this->httpClient->request('POST', '', [
-                'json' => [
-                    'query' => self::QUERY,
-                    'variables' => ['id' => $series->getAnilistId()],
-                ],
-            ]);
-            $data = $response->toArray()['data']['Media'] ?? null;
-        } catch (HttpExceptionInterface $e) {
-            throw new AnilistUnavailableException('No se pudo consultar AniList', 0, $e);
-        }
+        $data = $this->anilistClient->fetchAnilistDataById($series->getAnilistId());
 
         if ($data === null) {
             throw new AnilistUnavailableException('Respuesta inesperada de AniList');
         }
-
-        $series->setAiringStatus($data['status']);
-
-        if ($data['episodes'] > 0) {
-            $series->setTotalEpisodes($data['episodes']);
-        }
-
-        $next = $data['nextAiringEpisode'] ?? null;
+        $series->mapAnilistData($data);
         $series->setLastRefreshedAt(new \DateTime());
+    }
 
-        if ($next === null) {
-            $series->setNextAiringAt(null);
-            if ($data['status'] === SeriesStatus::FINISHED->value) {
-                $series->setCurrentAiringEpisode($series->getTotalEpisodes());
-            } elseif ($data['status'] === SeriesStatus::NOT_YET_RELEASED->value) {
-                $series->setCurrentAiringEpisode(0);
-            }
-            $series->setAiringDay(null);
+    public function refreshFromMal(Series $series): void
+    {
+        if ($series->getIdMal() === null) {
             return;
         }
 
-        $series->setCurrentAiringEpisode($next['episode'] - 1);
-        $series->setNextAiringAt(new \DateTime()->setTimestamp($next['airingAt']));
-        $day = new \DateTimeImmutable('@' . $next['airingAt'])->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l');
-        $series->setAiringDay(strtoupper($day));
+        try {
+            $response = $this->jikanClient->request('GET', 'anime/'. $series->getIdMal());
+            $data = $response->toArray()['data'] ?? null;
+        } catch (HttpExceptionInterface $e) {
+            throw new JikanUnavailableException('No se pudo consultar MyAnimeList', 0, $e);
+        }
+
+        if ($data === null) {
+            throw new JikanUnavailableException('Respuesta inesperada de MyAnimeList');
+        }
+
+        $this->updateTotalEpisodes($series, $data['episodes'] ?? null);
+
+        $status = match ($data['status'] ?? null){
+            'Finished Airing' => SeriesStatus::FINISHED->value,
+            'Currently Airing' => SeriesStatus::RELEASING->value,
+            'Not yet aired' => SeriesStatus::NOT_YET_RELEASED->value,
+            default => $series->getAiringStatus(),
+        };
+        $series->setAiringStatus($status);
+        $series->setLastRefreshedAt(new \DateTime());
     }
 
     public function refreshIfReleasingDue(Series $series): bool
@@ -78,7 +69,14 @@ class SeriesRefresher
             return false;
         }
 
-        $this->refresh($series);
+        $this->refreshFromAnilist($series);
         return true;
+    }
+
+    private function updateTotalEpisodes(Series $series, ?int $episodes): void
+    {
+        if ($episodes > $series->getTotalEpisodes()) {
+            $series->setTotalEpisodes($episodes);
+        }
     }
 }

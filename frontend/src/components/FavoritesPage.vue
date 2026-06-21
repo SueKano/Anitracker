@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ListFilter, ArrowDownUp, Heart } from 'lucide-vue-next'
 import { progressPercent } from '../utils/animeStats'
 import type { Anime } from '../types/Anime'
-import {translateDay} from "../utils/translateLabels.ts";
+import {translateDay, translateGenre} from "../utils/translateLabels.ts";
 
 const props = defineProps<{ animeList: Anime[] }>()
 const emit = defineEmits<{ select: [id: number] }>()
+const { t } = useI18n()
 
 type SortKey = 'default' | 'alpha' | 'progress'
 type MenuKey = 'genre' | 'sort'
@@ -67,41 +69,41 @@ function selectSort(key: SortKey) {
   openMenu.value = null
 }
 
-const sortOptions: { key: SortKey, label: string }[] = [
-  { key: 'default', label: 'Por defecto' },
-  { key: 'alpha', label: 'Alfabético' },
-  { key: 'progress', label: 'Progreso' },
+const sortOptions: { key: SortKey }[] = [
+  { key: 'default' },
+  { key: 'alpha' },
+  { key: 'progress' },
 ]
 
-const currentSortLabel = computed(() => sortOptions.find(option => option.key === sortKey.value)?.label ?? '')
-const currentGenreLabel = computed(() => genreFilter.value ?? 'Género')
+const currentSortLabel = computed(() => t('favorites.sort.' + sortKey.value))
+const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genreFilter.value) : t('favorites.genreDefault'))
 </script>
 
 <template>
   <div class="favs">
     <div class="page-head">
-      <h1 class="page-title">Favoritos</h1>
+      <h1 class="page-title">{{ t('favorites.title') }}</h1>
 
       <div v-if="baseFavorites.length > 0" class="head-actions">
         <div class="menu-wrap">
           <button class="menu-btn" :class="{ active: openMenu === 'genre' || genreFilter !== null }" :disabled="genreOptions.length === 0"
-            @click="toggleMenu('genre')" aria-label="Filtrar por género">
+            @click="toggleMenu('genre')" :aria-label="t('favorites.filterGenreAria')">
             <ListFilter :stroke-width="1.8" />
             <span>{{ currentGenreLabel }}</span>
           </button>
           <Transition name="pop">
             <div v-if="openMenu === 'genre'" class="menu-list">
-              <button class="menu-item" :class="{ active: genreFilter === null }" @click="selectGenre(null)">Todos</button>
+              <button class="menu-item" :class="{ active: genreFilter === null }" @click="selectGenre(null)">{{ t('favorites.all') }}</button>
               <div class="menu-divider" />
               <button v-for="genre in genreOptions" :key="genre" class="menu-item" :class="{ active: genreFilter === genre }" @click="selectGenre(genre)">
-                {{ genre }}
+                {{ translateGenre(genre) }}
               </button>
             </div>
           </Transition>
         </div>
 
         <div class="menu-wrap">
-          <button class="menu-btn" :class="{ active: openMenu === 'sort' }" @click="toggleMenu('sort')" aria-label="Ordenar">
+          <button class="menu-btn" :class="{ active: openMenu === 'sort' }" @click="toggleMenu('sort')" :aria-label="t('favorites.sortAria')">
             <ArrowDownUp :stroke-width="1.8" />
             <span>{{ currentSortLabel }}</span>
           </button>
@@ -109,7 +111,7 @@ const currentGenreLabel = computed(() => genreFilter.value ?? 'Género')
             <div v-if="openMenu === 'sort'" class="menu-list">
               <button v-for="option in sortOptions" :key="option.key" class="menu-item" :class="{ active: sortKey === option.key }"
                       @click="selectSort(option.key)">
-                {{ option.label }}
+                {{ t('favorites.sort.' + option.key) }}
               </button>
             </div>
           </Transition>
@@ -122,7 +124,7 @@ const currentGenreLabel = computed(() => genreFilter.value ?? 'Género')
         <div class="tile-cover">
           <img :src="anime.cover" :alt="anime.title" loading="lazy" />
           <span v-if="anime.airing" class="airing-badge"><i />{{ translateDay(anime.dayOfWeek) }}</span>
-          <span v-else class="done-badge">Completado</span>
+          <span v-else class="done-badge">{{ t('common.completed') }}</span>
         </div>
         <p class="tile-title">{{ anime.title }}</p>
         <div class="tile-progress">
@@ -133,14 +135,14 @@ const currentGenreLabel = computed(() => genreFilter.value ?? 'Género')
     </div>
 
     <div v-else-if="baseFavorites.length > 0" class="empty empty--filtered">
-      <span>Sin coincidencias</span>
-      <p>Pruebe con otro filtro</p>
+      <span>{{ t('favorites.noMatches') }}</span>
+      <p>{{ t('favorites.tryAnotherFilter') }}</p>
     </div>
 
     <div v-else class="empty">
       <Heart :stroke-width="1.2" />
-      <span>Aún no tienes favoritos</span>
-      <p>Márcalos desde el detalle de cada anime</p>
+      <span>{{ t('favorites.emptyTitle') }}</span>
+      <p>{{ t('favorites.emptyHint') }}</p>
     </div>
 
     <div v-if="openMenu !== null" class="menu-overlay" @click="openMenu = null" />

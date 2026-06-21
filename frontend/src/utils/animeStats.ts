@@ -9,5 +9,5 @@ export function availableEpisodes(anime: Anime) {
 }
 
 export function episodesBehind(anime: Anime) {
-  return Math.max(0, anime.aired - anime.progress)
+  return availableEpisodes(anime) - anime.progress
 }

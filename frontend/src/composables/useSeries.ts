@@ -1,6 +1,8 @@
 import { useToast } from './useToast'
 import { mapAnimeFromApi } from '../utils/mapAnimeFromApi'
 import type { Anime } from '../types/Anime'
+import type { ApiError } from '../types/Api'
+import {errorMessage, t} from '../i18n'
 
 export function useSeries() {
   const toast = useToast()
@@ -9,7 +11,7 @@ export function useSeries() {
     try {
       const response = await fetch(`/api/series/anilist/${anilistId}`, { credentials: 'include' })
       if (!response.ok) {
-        toast.error('No se pudo cargar la información del anime')
+        toast.error(t('toast.animeLoadError'))
         return null
       }
       const data = await response.json()
@@ -21,7 +23,7 @@ export function useSeries() {
         isTracked: data.tracking !== null,
       }
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return null
     }
   }
@@ -34,12 +36,12 @@ export function useSeries() {
         body: JSON.stringify({ anilistId }),
         credentials: 'include'
       })
-      const data = await response.json()
+      const data = await response.json() as ApiError
       if (response.ok) return true
-      toast.error(data.error)
+      toast.error(errorMessage(data.errorCode))
       return false
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }
@@ -52,18 +54,42 @@ export function useSeries() {
         body: JSON.stringify({ anilistId }),
         credentials: 'include'
       })
-      const data = await response.json()
-      if (response.ok) {
-        toast.success(data.isFavourite ? 'Serie añadida a favoritos' : 'Serie eliminada de favoritos')
-        return data.isFavourite as boolean
+      if (!response.ok) {
+        const data = await response.json() as ApiError
+        toast.error(errorMessage(data.errorCode))
+        return null
       }
-      toast.error(data.error)
-      return null
+      const data = await response.json() as { isFavourite: boolean }
+      toast.success(data.isFavourite ? t('toast.favAdded') : t('toast.favRemoved'))
+      return data.isFavourite
+
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return null
     }
   }
 
-  return { fetchAnilistDetails, createUserSeries, toggleFavourite }
+  async function updateAdultEpisode(anilistId: number, currentAiringEpisode: number): Promise<boolean> {
+    try {
+      const response = await fetch('/api/series/updateEpisodeToAdultSeries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anilistId, currentAiringEpisode }),
+        credentials: 'include'
+      })
+      if (response.ok) {
+        toast.success(t('toast.adultEpisodeUpdated'))
+        return true
+      }
+      const data = await response.json() as ApiError
+      toast.error(errorMessage(data.errorCode))
+      return false
+
+    } catch {
+      toast.error(t('toast.connectionError'))
+      return false
+    }
+  }
+
+  return { fetchAnilistDetails, createUserSeries, toggleFavourite, updateAdultEpisode }
 }

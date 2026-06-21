@@ -9,7 +9,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 class UserEpisodeWatch extends AbstractEntity
 {
     #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private UserInterface $user;
 
     #[ORM\ManyToOne(targetEntity: Series::class)]

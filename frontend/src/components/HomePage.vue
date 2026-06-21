@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalendarPage from './CalendarPage.vue'
 import FavoritesPage from './FavoritesPage.vue'
 import AnimeDetail from './AnimeDetail.vue'
@@ -10,24 +11,48 @@ import { useSession } from '../composables/useSession'
 import { useUserSeries } from '../composables/useUserSeries'
 import { useSeriesSearch } from '../composables/useSeriesSearch'
 import { useRecap } from '../composables/useRecap'
+import { useAdultGate } from '../composables/useAdultGate'
 import { useToast } from '../composables/useToast'
 import type { Anime } from '../types/Anime'
-import { translateDay } from '../utils/translateLabels'
+import { translateDay, resolveAiringStatus } from '../utils/translateLabels'
 import { Search, User, MoreVertical, Trash2, Home, Calendar, Heart, Sparkles } from 'lucide-vue-next'
 
 const { isLoggedIn, currentUsername, currentProfileImage, checkSession, setUser, clearSession } = useSession()
-const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, clearList, progressPercent, availableEpisodes } = useUserSeries()
-const { searchQuery, searchFocused, searchResults, searchLoading, searchHasMore, loadMoreResults, clearSearch } = useSeriesSearch()
+const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
+const { searchQuery, searchFocused, searchResults, searchLoading, searchHasMore, searchLimited, loadMoreResults, clearSearch } = useSeriesSearch()
 const { recap, fetchRecap } = useRecap()
+const { modalOpen, ensureAdultAccess, confirmAdult, cancelAdult } = useAdultGate()
 const toast = useToast()
+const { t } = useI18n()
 
 const isDecember = computed(() => new Date().getMonth() === 11)
 const showRecap = ref(false)
 
+const searchScrollEl = ref<HTMLElement | null>(null)
+const searchAtBottom = ref(false)
+
+function updateSearchAtBottom() {
+  const el = searchScrollEl.value
+  if (!el) {
+    searchAtBottom.value = false
+    return
+  }
+  const hasOverflow = el.scrollHeight > el.clientHeight
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24
+  searchAtBottom.value = !hasOverflow || nearBottom
+}
+
+watch(searchQuery, () => {
+  if (searchScrollEl.value) searchScrollEl.value.scrollTop = 0
+  searchAtBottom.value = false
+})
+
+watch(searchResults, () => { void nextTick(updateSearchAtBottom) })
+
 async function openRecap() {
   await fetchRecap(new Date().getFullYear())
   if (!recap.value) {
-    toast.warning('Se necesitan 8 series para poder crear tu recap')
+    toast.warning(t('toast.recapNeed8'))
     return
   }
   showRecap.value = true
@@ -47,15 +72,19 @@ const filteredList = computed(() => {
 })
 
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
-function selectSearchResult(result: Anime) {
-  const alreadyTracked = animeList.value.find(a => a.id === result.id)
+async function selectSearchResult(result: Anime) {
+  if (!(await ensureAdultAccess(result.isAdult))) return
+  const alreadyTracked = animeList.value.find(anime => anime.id === result.id)
   selectedAnime.value = alreadyTracked ?? { ...result }
   isNewAnime.value = !alreadyTracked
   clearSearch()
 }
 
-function openDetail(id: number) {
-  selectedAnime.value = animeList.value.find(a => a.id === id) ?? null
+async function openDetail(id: number) {
+  const anime = animeList.value.find(a => a.id === id)
+  if (!anime) return
+  if (!(await ensureAdultAccess(anime.isAdult))) return
+  selectedAnime.value = anime
   isNewAnime.value = false
 }
 
@@ -90,24 +119,36 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
-const tabs: { id: typeof activeTab.value, label: string, icon: string }[] = [
-  { id: 'home',      label: 'Inicio',     icon: 'home' },
-  { id: 'calendar',  label: 'Calendario', icon: 'calendar' },
-  { id: 'favorites', label: 'Favoritos',  icon: 'heart' },
-  { id: 'profile',   label: 'Perfil',     icon: 'profile'}
+const tabs: { id: typeof activeTab.value, icon: string }[] = [
+  { id: 'home',      icon: 'home' },
+  { id: 'calendar',  icon: 'calendar' },
+  { id: 'favorites', icon: 'heart' },
+  { id: 'profile',   icon: 'profile'}
 ]
 
 const filters = [
-  { key: 'watching' as const,  label: 'Viendo' },
-  { key: 'completed' as const, label: 'Completados' },
-  { key: 'all' as const,       label: 'Todos' },
+  { key: 'watching' as const },
+  { key: 'completed' as const },
+  { key: 'all' as const },
 ]
 </script>
 
 <template>
+  <div v-if="modalOpen" class="adult-gate-overlay" @click.self="cancelAdult">
+    <div class="adult-gate">
+      <h3 class="adult-gate-title">{{ t('adultGate.title') }}</h3>
+      <p class="adult-gate-text">{{ t('adultGate.message') }}</p>
+      <div class="adult-gate-actions">
+        <button class="adult-gate-cancel" @click="cancelAdult">{{ t('adultGate.cancel') }}</button>
+        <button class="adult-gate-confirm" @click="confirmAdult">{{ t('adultGate.confirm') }}</button>
+      </div>
+    </div>
+  </div>
+
   <RecapWidget v-if="showRecap && recap" :recap="recap" @close="showRecap = false"/>
   <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" @close="selectedAnime = null; isNewAnime = false"
-               @favorite-changed="setFavorite" @goToHome="selectedAnime = null; isNewAnime = false; activeTab = 'home'; fetchUserSeries()"/>
+               @favorite-changed="setFavorite" @adult-episode-changed="setAiredEpisode" @goToHome="selectedAnime = null;
+               isNewAnime = false; activeTab = 'home'; fetchUserSeries()"/>
 
   <header v-show="activeTab === 'home'" class="header">
     <div class="header-row">
@@ -115,29 +156,32 @@ const filters = [
       <div class="search-wrap">
         <div class="search" :class="{ focused: searchFocused || searchQuery.length > 0 }">
           <Search :stroke-width="2.2" />
-          <input v-model="searchQuery" type="text" placeholder="Search anime..." @focus="searchFocused = true" @blur="searchFocused = false" />
+          <input v-model="searchQuery" type="text" :placeholder="t('home.searchPlaceholder')" @focus="searchFocused = true" @blur="searchFocused = false" />
         </div>
         <Transition name="pop">
-          <div v-if="searchFocused && (searchResults.length > 0 || searchLoading)" class="search-dropdown">
-            <div v-if="searchLoading" class="search-loading">Buscando...</div>
-            <button v-for="r in searchResults" :key="r.id" class="search-item" @mousedown.prevent="selectSearchResult(r)">
-              <img :src="r.cover" :alt="r.title" class="search-item-cover" />
-              <div class="search-item-info">
-                <span class="search-item-title">{{ r.title }}</span>
-                <span class="search-item-meta">
-                  {{ r.airingStatus === 'NOT_YET_RELEASED' ? 'Próximamente' : (r.airing ? 'En emisión' : 'Completado') }}
-                  · {{ r.total }} ep.
-                </span>
-              </div>
+          <div v-if="searchFocused && (searchResults.length > 0 || searchLoading || searchLimited)" class="search-dropdown">
+            <div ref="searchScrollEl" class="search-results-scroll" @scroll="updateSearchAtBottom">
+              <div v-if="searchLoading" class="search-loading">{{ t('home.searching') }}</div>
+              <button v-for="r in searchResults" :key="r.id" class="search-item" @mousedown.prevent="selectSearchResult(r)">
+                <img :src="r.cover" :alt="r.title" class="search-item-cover" />
+                <div class="search-item-info">
+                  <span class="search-item-title">{{ r.title }}</span>
+                  <span class="search-item-meta">
+                    {{ t(`home.status.${resolveAiringStatus(r)}`) }}
+                    · {{ t('home.episodesShort', { count: r.total }) }}
+                  </span>
+                </div>
+              </button>
+            </div>
+            <button v-if="searchHasMore && !searchLoading && searchAtBottom" class="search-load-more" @mousedown.prevent="loadMoreResults">
+              {{ t('home.loadMore') }}
             </button>
-            <button v-if="searchHasMore && !searchLoading" class="search-load-more" @mousedown.prevent="loadMoreResults">
-              Ver más resultados
-            </button>
+            <div v-if="searchLimited && !searchLoading" class="search-limited">{{ t('home.searchLimited') }}</div>
           </div>
         </Transition>
       </div>
 
-      <button class="avatar-btn" aria-label="Perfil" @click="activeTab = 'profile'">
+      <button class="avatar-btn" :aria-label="t('home.profileAria')" @click="activeTab = 'profile'">
         <img v-if="isLoggedIn && currentProfileImage" :src="currentProfileImage" alt="Avatar" class="avatar-img" />
         <span v-else-if="isLoggedIn" class="avatar-letter">{{ currentUsername.charAt(0).toUpperCase() }}</span>
         <User v-else :stroke-width="1.8" />
@@ -146,7 +190,7 @@ const filters = [
 
     <div class="filter-row">
       <button v-for="filter in filters" :key="filter.key" class="filter-btn" :class="{ active: activeFilter === filter.key }" @click="activeFilter = filter.key">
-        {{ filter.label }}
+        {{ t('home.filters.' + filter.key) }}
       </button>
     </div>
   </header>
@@ -162,7 +206,7 @@ const filters = [
   <main v-show="activeTab === 'home'" class="list">
     <button v-if="isDecember" class="recap-cta" @click="openRecap">
       <Sparkles :stroke-width="1.8" />
-      <span>Ver tu recap del año</span>
+      <span>{{ t('common.recapCta') }}</span>
     </button>
 
     <TransitionGroup name="card" tag="ul" class="cards">
@@ -185,14 +229,14 @@ const filters = [
           </div>
         </div>
         <div class="menu-wrap">
-          <button class="btn-dots" @click.stop="toggleMenu(anime.id)" aria-label="Opciones">
+          <button class="btn-dots" @click.stop="toggleMenu(anime.id)" :aria-label="t('home.optionsAria')">
             <MoreVertical />
           </button>
           <Transition name="pop">
             <div v-if="openMenuId === anime.id" class="dropdown">
               <button class="drop-item drop-danger" @click.stop="deleteAnime(anime.id); openMenuId = null">
                 <Trash2 :stroke-width="2" />
-                Eliminar
+                {{ t('home.delete') }}
               </button>
             </div>
           </Transition>
@@ -205,7 +249,7 @@ const filters = [
         <circle cx="20" cy="20" r="16" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="3 3"/>
         <path d="M14 20h12M14 26h8" stroke="var(--text-3)" stroke-width="1" stroke-linecap="round"/>
       </svg>
-      <p>Tu lista está vacía</p>
+      <p>{{ t('home.empty') }}</p>
     </div>
   </main>
 
@@ -216,7 +260,7 @@ const filters = [
       <Calendar v-if="tab.icon === 'calendar'" :stroke-width="1.8" />
       <Heart v-if="tab.icon === 'heart'" :stroke-width="1.8" />
       <User v-if="tab.icon === 'profile'" :stroke-width="1.8" />
-      <span>{{ tab.label }}</span>
+      <span>{{ t('nav.' + tab.id) }}</span>
     </button>
   </nav>
 </template>

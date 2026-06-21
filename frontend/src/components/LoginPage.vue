@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from '../composables/useToast'
 import { useAuth } from '../composables/useAuth'
+import { User, Mail, Lock, Eye, EyeOff } from 'lucide-vue-next'
 
 const emit = defineEmits<{ 'login-success': [username: string], 'register-success': [username: string], googleLogin: [] }>()
 
 const toast = useToast()
 const { login, register } = useAuth()
+const { t } = useI18n()
 
 const username = ref('')
 const password = ref('')
@@ -17,7 +20,7 @@ const loading = ref(false)
 
 async function handleSubmit() {
   if (!username.value || !password.value) {
-    toast.error('Por favor completa todos los campos')
+    toast.error(t('toast.fillAllFields'))
     return
   }
   loading.value = true
@@ -42,58 +45,48 @@ function toggleMode() {
     <div class="login-brand">
       <img src="/favicon.svg" alt="" class="login-icon" />
       <span class="login-wordmark">AniTracker</span>
-      <span class="login-sub">{{ isRegister ? 'Crea tu cuenta' : 'Tu progreso, tu ritmo' }}</span>
+      <span class="login-sub">{{ isRegister ? t('login.subCreate') : t('login.subLogin') }}</span>
     </div>
 
     <form class="login-form" @submit.prevent="handleSubmit">
       <div class="input-group">
-        <label class="input-label" for="login-user">{{ isRegister ? 'Nombre de usuario' : 'Usuario' }}</label>
+        <label class="input-label" for="login-user">{{ isRegister ? t('login.userLabelRegister') : t('login.userLabelLogin') }}</label>
         <div class="input-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>
-          </svg>
-          <input id="login-user" v-model="username" type="text" :placeholder="isRegister ? 'Elige un nombre de usuario' : 'Tu nombre de usuario'"
+          <User :stroke-width="1.8" />
+          <input id="login-user" v-model="username" type="text" :placeholder="isRegister ? t('login.userPlaceholderRegister') : t('login.userPlaceholderLogin')"
                  autocomplete="username"/>
         </div>
       </div>
 
       <div class="input-group">
         <div v-if="isRegister">
-          <label class="input-label" for="login-email">Email <span class="input-hint">— no se verifica, puedes inventártelo</span></label>
+          <label class="input-label" for="login-email">{{ t('login.emailLabel') }} <span class="input-hint">{{ t('login.emailHint') }}</span></label>
           <div class="input-wrap">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>
-            </svg>
-            <input id="login-email" v-model="email" type="email" placeholder="tu@correo.com" autocomplete="email"/>
+            <Mail :stroke-width="1.8" />
+            <input id="login-email" v-model="email" type="email" :placeholder="t('login.emailPlaceholder')" autocomplete="email"/>
           </div>
         </div>
 
-        <label class="input-label" for="login-pass">Contraseña</label>
+        <label class="input-label" for="login-pass">{{ t('login.passwordLabel') }}</label>
         <div class="input-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
+          <Lock :stroke-width="1.8" />
           <input id="login-pass" v-model="password" :type="showPassword ? 'text' : 'password'"
-                 :placeholder="isRegister ? 'Crea una contraseña' : 'Tu contraseña'" :autocomplete="isRegister ? 'new-password' : 'current-password'"/>
-          <button type="button" class="btn-eye" @click="showPassword = !showPassword" aria-label="Mostrar contraseña">
-            <svg v-if="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-            <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
+                 :placeholder="isRegister ? t('login.passwordPlaceholderRegister') : t('login.passwordPlaceholderLogin')"
+                 :autocomplete="isRegister ? 'new-password' : 'current-password'"/>
+          <button type="button" class="btn-eye" @click="showPassword = !showPassword" :aria-label="t('login.showPasswordAria')">
+            <Eye v-if="!showPassword" :stroke-width="1.8" />
+            <EyeOff v-else :stroke-width="1.8" />
           </button>
         </div>
       </div>
 
       <button type="submit" class="btn-login" :disabled="!username.trim() || !password">
-        {{ isRegister ? 'Crear cuenta' : 'Iniciar sesión' }}
+        {{ isRegister ? t('login.submitRegister') : t('login.submitLogin') }}
       </button>
     </form>
 
     <template v-if="!isRegister">
-      <div class="divider"><span>o continúa con</span></div>
+      <div class="divider"><span>{{ t('login.orContinue') }}</span></div>
 
       <button class="btn-google" @click="emit('googleLogin')">
         <svg viewBox="0 0 24 24">
@@ -102,13 +95,13 @@ function toggleMode() {
           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18A10.96 10.96 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
         </svg>
-        Continuar con Google
+        {{ t('login.google') }}
       </button>
     </template>
 
     <div class="login-footer">
-      <p v-if="!isRegister">¿No tienes cuenta? <button class="btn-register" @click="toggleMode">Crear cuenta</button></p>
-      <p v-else>¿Ya tienes cuenta? <button class="btn-register" @click="toggleMode">Iniciar sesión</button></p>
+      <p v-if="!isRegister">{{ t('login.noAccount') }} <button class="btn-register" @click="toggleMode">{{ t('login.createAccount') }}</button></p>
+      <p v-else>{{ t('login.haveAccount') }} <button class="btn-register" @click="toggleMode">{{ t('login.goLogin') }}</button></p>
     </div>
   </div>
 </template>

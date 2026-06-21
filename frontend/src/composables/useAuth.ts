@@ -1,8 +1,9 @@
 import { useToast } from './useToast'
+import { t, errorMessage } from '../i18n'
+import type { ApiError } from '../types/Api'
 
 export function useAuth() {
   const toast = useToast()
-
   async function login(username: string, password: string): Promise<boolean> {
     try {
       const response = await fetch('/api/login', {
@@ -12,12 +13,13 @@ export function useAuth() {
         credentials: 'include'
       })
       if (!response.ok) {
-        toast.error('Las credenciales proporcionadas no son correctas')
+        toast.error(t('toast.wrongCredentials'))
         return false
       }
+
       return true
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }
@@ -31,13 +33,15 @@ export function useAuth() {
         credentials: 'include'
       })
       if (!response.ok) {
-        toast.error('Error al crear la cuenta')
+        const data = await response.json() as ApiError
+        toast.error(errorMessage(data.errorCode))
         return false
       }
-      toast.success('Cuenta creada correctamente')
+
+      toast.success(t('toast.accountCreated'))
       return true
     } catch {
-      toast.error('Error de conexión con el servidor')
+      toast.error(t('toast.connectionError'))
       return false
     }
   }

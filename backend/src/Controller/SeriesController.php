@@ -6,9 +6,12 @@ use App\Entity\Series;
 use App\Entity\User;
 use App\Entity\UserEpisodeWatch;
 use App\Entity\UserSeries;
+use App\Enum\ErrorCode;
 use App\Enum\SeriesStatus;
 use App\Exception\AnilistUnavailableException;
+use App\Exception\JikanUnavailableException;
 use App\Repository\SeriesRepository;
+use App\Services\AnilistApiClient;
 use App\Services\SeriesRefresher;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Cache\CacheItemPoolInterface;
@@ -21,26 +24,20 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
-use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 class SeriesController extends AbstractController
 {
-    private const string ANILIST_DETAIL_QUERY = 'query($id:Int){
-      Media(id:$id,type:ANIME){
-        id title{romaji english} coverImage{extraLarge}
-        episodes status nextAiringEpisode{episode}
-        season source genres format seasonYear airingSchedule{nodes{airingAt}}
-      }}';
     private const string BAN_KEY_PREFIX = 'anilist_ban_';
     private const int BAN_TTL_SECONDS = 12 * 3600;
 
     public function __construct(protected EntityManagerInterface $entityManager, protected SeriesRepository $seriesRepository,
-                                #[Target('anilist.client')] private readonly HttpClientInterface $httpClient, private readonly SeriesRefresher $seriesRefresher,
+                                private readonly SeriesRefresher $seriesRefresher, private readonly LoggerInterface $logger,
                                 #[Target('anilistSearchBurstLimiter')] private readonly RateLimiterFactoryInterface $anilistSearchBurstLimiter,
                                 #[Target('anilistDetailBurstLimiter')] private readonly RateLimiterFactoryInterface $anilistDetailBurstLimiter,
                                 #[Target('anilistSearchHourLimiter')] private readonly RateLimiterFactoryInterface $anilistSearchHourLimiter,
                                 #[Target('anilistDetailHourLimiter')] private readonly RateLimiterFactoryInterface $anilistDetailHourLimiter,
-                                private readonly CacheItemPoolInterface $cache, private readonly LoggerInterface $logger)
+                                private readonly CacheItemPoolInterface $cache, private readonly AnilistApiClient $anilistClient)
     {
     }
 
@@ -51,12 +48,12 @@ class SeriesController extends AbstractController
         $banItem = $this->cache->getItem(self::BAN_KEY_PREFIX . $userId);
 
         if ($banItem->isHit()) {
-            return new JsonResponse(['error' => 'Acceso temporalmente suspendido por abuso'], Response::HTTP_TOO_MANY_REQUESTS);
+            return new JsonResponse(['errorCode' => ErrorCode::ACCESS_SUSPENDED_ABUSE->value], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
         if (!$burstLimiter->create($userId)->consume()->isAccepted()) {
             $this->logger->warning('AniList burst limit hit', ['user' => $userId, 'endpoint' => $endpoint]);
-            return new JsonResponse(['error' => 'Demasiadas peticiones. Espera un momento.'], Response::HTTP_TOO_MANY_REQUESTS);
+            return new JsonResponse(['errorCode' => ErrorCode::RATE_LIMITED->value], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
         if (!$hourLimiter->create($userId)->consume()->isAccepted()) {
@@ -64,7 +61,7 @@ class SeriesController extends AbstractController
             $banItem->expiresAfter(self::BAN_TTL_SECONDS);
             $this->cache->save($banItem);
             $this->logger->warning('AniList hour limit hit — user banned 12h', ['user' => $userId, 'endpoint' => $endpoint]);
-            return new JsonResponse(['error' => 'Acceso suspendido durante 12 horas por abuso'], Response::HTTP_TOO_MANY_REQUESTS);
+            return new JsonResponse(['errorCode' => ErrorCode::ACCESS_SUSPENDED_12H->value], Response::HTTP_TOO_MANY_REQUESTS);
         }
 
         return null;
@@ -77,7 +74,7 @@ class SeriesController extends AbstractController
         $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
         $seriesToDelete = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $series]);
         if (!$seriesToDelete) {
-            return $this->json(['error' => 'Anime no encontrado'], Response::HTTP_NOT_FOUND);
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
         }
 
         $this->entityManager->remove($seriesToDelete);
@@ -94,7 +91,7 @@ class SeriesController extends AbstractController
         $userSeries = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
 
         if ($userSeries === null) {
-            return $this->json(['error' => 'No tienes esta serie en tu lista'], 404);
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_IN_LIST->value], 404);
         }
 
         $numberEpisodeToAdd = $userSeries->getLastEpisodeWatchedCount() + 1;
@@ -104,14 +101,14 @@ class SeriesController extends AbstractController
                     $this->entityManager->flush();
                 }
             } catch (AnilistUnavailableException) {
-                return $this->json(['error' => 'No se pudo verificar el episodio, prueba en unos minutos'], 503);
+                return $this->json(['errorCode' => ErrorCode::EPISODE_VERIFICATION_FAILED->value], 503);
             }
 
             if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
                 if ($foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value) {
-                    return $this->json(['error' => 'Esta serie ya está completa'], 409);
+                    return $this->json(['errorCode' => ErrorCode::SERIES_ALREADY_COMPLETED->value], 409);
                 }
-                return $this->json(['error' => 'El episodio aún no se ha emitido'], 409);
+                return $this->json(['errorCode' => ErrorCode::EPISODE_NOT_AIRED->value], 409);
             }
         }
         if ($foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes()) {
@@ -131,26 +128,6 @@ class SeriesController extends AbstractController
         return $this->json(['lastEpisodeWatched' => $numberEpisodeToAdd, 'isCompleted' => $userSeries->isCompleted()]);
     }
 
-    private function episodeIsAvailable(Series $series, int $episode): bool
-    {
-        $seriesEpisodes = match ($series->getAiringStatus()) {
-            SeriesStatus::FINISHED->value  => $series->getTotalEpisodes(),
-            SeriesStatus::RELEASING->value => $series->getCurrentAiringEpisode(),
-            default => 0,
-        };
-
-        return $episode <= $seriesEpisodes;
-    }
-
-    private function ensureSeriesIsTrackable(Series $series): ?Response
-    {
-        if ($series->getAiringStatus() === SeriesStatus::NOT_YET_RELEASED->value) {
-            return $this->json(['error' => 'No puedes seguir un anime que aún no se ha emitido'], 409);
-        }
-
-        return null;
-    }
-
     #[Route('/api/series/getUserSeries', name: 'get_user_series', methods: ['GET'])]
     public function getUserSeries(#[CurrentUser] User $user): Response
     {
@@ -163,24 +140,21 @@ class SeriesController extends AbstractController
     public function getSeries(Request $request, #[CurrentUser] User $user): Response
     {
         $seriesNameUserInput = $request->query->get('animeName');
-        if (mb_strlen($seriesNameUserInput) < 2) {
-            return $this->json(['series' => []]);
+        if (mb_strlen($seriesNameUserInput) < 3) {
+            return $this->json(['series' => [], 'hasMore' => false]);
         }
-        $localSeriesFound = $this->seriesRepository->searchSimilarAnime($seriesNameUserInput);
-        if (count($localSeriesFound) >= 5) {
-            return $this->json(['series' => $localSeriesFound], Response::HTTP_OK, [], ['groups' => ['search:series']]);
-        }
-        if ($limitResponse = $this->enforceUserAnilistLimits($user, $this->anilistSearchBurstLimiter, $this->anilistSearchHourLimiter, 'search')) {
-            return $limitResponse;
-        }
-        $seriesFromAniList = $this->fetchFromAnilist($seriesNameUserInput);
-        $localAnilistIds = array_map(fn (Series $series) => $series->getAnilistId(), $localSeriesFound);
-        $filteredAnilistSeries = array_filter(
-            $seriesFromAniList,
-            fn (Series $series) => !in_array($series->getAnilistId(), $localAnilistIds, true)
-        );
+        $page = max(0, $request->query->getInt('page'));
+        $localSeriesFound = $page === 0 ? $this->seriesRepository->searchSimilarAnime($seriesNameUserInput) : [];
 
-        return $this->json(['series' => [...$localSeriesFound, ...$filteredAnilistSeries]], Response::HTTP_OK, [], ['groups' => ['search:series']]);
+        if ($this->enforceUserAnilistLimits($user, $this->anilistSearchBurstLimiter, $this->anilistSearchHourLimiter, 'search') !== null) {
+            return $this->json(['series' => $localSeriesFound, 'hasMore' => false, 'limited' => true], Response::HTTP_OK, [], ['groups' => ['search:series']]);
+        }
+        ['series' => $seriesFromAniList, 'hasMore' => $hasMore] = $this->anilistClient->fetchFromAnilist($seriesNameUserInput, $page);
+
+        $localAnilistIds = array_map(fn (Series $series) => $series->getAnilistId(), $localSeriesFound);
+        $filteredAnilistSeries = array_filter($seriesFromAniList, fn (Series $series) => !in_array($series->getAnilistId(), $localAnilistIds, true));
+
+        return $this->json(['series' => [...$localSeriesFound, ...$filteredAnilistSeries], 'hasMore' => $hasMore], Response::HTTP_OK, [], ['groups' => ['search:series']]);
     }
 
     #[Route('/api/series/anilist/{anilistId}', name: 'get_series_anilist_detail', requirements: ['anilistId' => '\d+'], methods: ['GET'])]
@@ -192,11 +166,18 @@ class SeriesController extends AbstractController
             if ($limitResponse = $this->enforceUserAnilistLimits($user, $this->anilistDetailBurstLimiter, $this->anilistDetailHourLimiter, 'detail')) {
                 return $limitResponse;
             }
-            $media = $this->fetchAnilistDataById($anilistId);
-            if ($media === null) {
-                return $this->json(['error' => 'No se encontró el anime'], Response::HTTP_NOT_FOUND);
+            try {
+                $media = $this->anilistClient->fetchAnilistDataById($anilistId);
+            } catch (AnilistUnavailableException) {
+                return $this->json(['errorCode' => ErrorCode::SERIES_LOOKUP_FAILED->value], Response::HTTP_SERVICE_UNAVAILABLE);
             }
+
+            if ($media === null) {
+                return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+            }
+
             $series = Series::createSeriesFromAnilistData($media);
+            $this->refreshAdultSeriesFromMal($series);
             $this->entityManager->persist($series);
             $this->entityManager->flush();
         }
@@ -217,11 +198,18 @@ class SeriesController extends AbstractController
             if ($limitResponse = $this->enforceUserAnilistLimits($user, $this->anilistDetailBurstLimiter, $this->anilistDetailHourLimiter, 'createUserSeries')) {
                 return $limitResponse;
             }
-            $media = $this->fetchAnilistDataById($anilistId);
-            if ($media === null) {
-                return $this->json(['error' => 'Anime no encontrado'], Response::HTTP_NOT_FOUND);
+            try {
+                $media = $this->anilistClient->fetchAnilistDataById($anilistId);
+            } catch (AnilistUnavailableException) {
+                return $this->json(['errorCode' => ErrorCode::SERIES_LOOKUP_FAILED->value], Response::HTTP_SERVICE_UNAVAILABLE);
             }
+
+            if ($media === null) {
+                return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+            }
+
             $series = Series::createSeriesFromAnilistData($media);
+            $this->refreshAdultSeriesFromMal($series);
             $isNewSeries = true;
         }
 
@@ -250,58 +238,71 @@ class SeriesController extends AbstractController
         $foundSeries = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
         $seriesToChange = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
         if (!$seriesToChange) {
-            return $this->json(['error' => 'Anime no encontrado'], Response::HTTP_NOT_FOUND);
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
         }
+
         $seriesToChange->setIsFavourite(!$seriesToChange->IsFavourite());
         $this->entityManager->flush();
 
         return $this->json(['isFavourite' => $seriesToChange->IsFavourite()]);
     }
 
-    private function queryAniList(string $query, array $variables): array
+    #[Route('/api/series/updateEpisodeToAdultSeries', name: 'update_episode_adult_series', methods: ['POST'])]
+    #[IsGranted('ROLE_SUPER_ADMIN')]
+    public function updateEpisodeToAdultSeries(Request $request): Response
     {
-        $response = $this->httpClient->request('POST', '', [
-            'json' => [
-                'query'     => $query,
-                'variables' => $variables,
-            ],
-        ]);
+        $seriesData = json_decode($request->getContent(), true);
+        $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
 
-        return $response->toArray();
-    }
-
-    private function fetchFromAniList(string $searchTerm): array
-    {
-        $graphqlQuery = 'query($search:String,$perPage:Int){
-                        Page(page:1,perPage:$perPage){
-                          media(search:$search,type:ANIME){
-                            id title{romaji english} coverImage{extraLarge}
-                            episodes status nextAiringEpisode{episode}
-                            season source genres format seasonYear synonyms
-                          }
-                        }
-                      }';
-
-        try {
-            $responseData = $this->queryAniList($graphqlQuery, [
-                'search'  => $searchTerm,
-                'perPage' => 5,
-            ]);
-        } catch (\Throwable) {
-            return [];
+        if (!$series) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+        }
+        if (!$series->getIsAdult()) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_ADULT->value], Response::HTTP_BAD_REQUEST);
+        }
+        if ($seriesData['currentAiringEpisode'] < 1 || $seriesData['currentAiringEpisode'] > 12){
+            return $this->json(['errorCode' => ErrorCode::INVALID_VALUE->value], Response::HTTP_BAD_REQUEST);
         }
 
-        return array_map(fn (array $media) => Series::createSeriesFromAnilistData($media), $responseData['data']['Page']['media'] ?? []);
+        $series->setCurrentAiringEpisode($seriesData['currentAiringEpisode']);
+        $series->setTotalEpisodes($seriesData['currentAiringEpisode']);
+        $this->entityManager->flush();
+
+        return $this->json(['status' => 'ok']);
     }
 
-    private function fetchAnilistDataById(int $anilistId): ?array
+    private function episodeIsAvailable(Series $series, int $episode): bool
     {
-        $responseData = $this->queryAniList(self::ANILIST_DETAIL_QUERY, ['id' => $anilistId]);
-        return $responseData['data']['Media'] ?? null;
+        $seriesEpisodes = match ($series->getAiringStatus()) {
+            SeriesStatus::FINISHED->value  => $series->getTotalEpisodes(),
+            SeriesStatus::RELEASING->value => $series->getCurrentAiringEpisode(),
+            default => 0,
+        };
+
+        return $episode <= $seriesEpisodes;
+    }
+
+    private function ensureSeriesIsTrackable(Series $series): ?Response
+    {
+        if ($series->getAiringStatus() === SeriesStatus::NOT_YET_RELEASED->value) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_YET_RELEASED->value], 409);
+        }
+
+        return null;
     }
 
     private function findOneSeriesByAnilistId(int $anilistId): ?Series
     {
         return $this->entityManager->getRepository(Series::class)->findOneByAnilistId($anilistId);
+    }
+
+    private function refreshAdultSeriesFromMal(Series $series): void
+    {
+        if ($series->getIsAdult()){
+            try {
+                $this->seriesRefresher->refreshFromMal($series);
+            } catch (JikanUnavailableException) {
+            }
+        }
     }
 }

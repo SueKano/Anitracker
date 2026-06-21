@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ChevronLeft, ArrowUpRight } from 'lucide-vue-next'
 
 const emit = defineEmits<{ back: [] }>()
+const { t } = useI18n()
 
 const EMAIL = 'suekanoo@gmail.com'
 const PAYPAL_URL = 'https://www.paypal.me/jorgesinmas'
@@ -9,19 +11,19 @@ const PAYPAL_URL = 'https://www.paypal.me/jorgesinmas'
 
 <template>
   <div class="contact">
-    <button class="contact-back" aria-label="Volver" @click="emit('back')">
+    <button class="contact-back" :aria-label="t('contact.backAria')" @click="emit('back')">
       <ChevronLeft :stroke-width="2.2" />
     </button>
 
     <article class="contact-article">
       <h1 class="contact-title">
-        <span class="contact-title-line">Contacto</span>
+        <span class="contact-title-line">{{ t('contact.title') }}</span>
       </h1>
       <div class="contact-rule" aria-hidden="true">
         <span class="contact-rule-dot"/>
       </div>
       <p class="contact-lede">
-        Si has encontrado un fallo, tienes alguna sugerencia o propuesta, puedes escribirme al siguiente correo
+        {{ t('contact.lede1') }}
       </p>
       <div class="contact-channels">
         <a class="contact-card" :href="`mailto:${EMAIL}`">
@@ -33,17 +35,17 @@ const PAYPAL_URL = 'https://www.paypal.me/jorgesinmas'
         </a>
       </div>
       <p class="contact-lede">
-        Contestare a tu correo lo antes posible según mi disponibilidad
+        {{ t('contact.lede2') }}
       </p>
       <div class="contact-rule contact-rule--soft" aria-hidden="true"/>
       <section class="contact-postscript">
-        <h2 class="contact-ps-title">Apoya el proyecto</h2>
+        <h2 class="contact-ps-title">{{ t('contact.supportTitle') }}</h2>
         <p class="contact-ps-body">
-          Si te ha sido útil y quieres invitarme a un café, puedes hacerlo aqui.
+          {{ t('contact.supportBody') }}
         </p>
         <a class="contact-paypal" :href="PAYPAL_URL" target="_blank" rel="noopener">
           <span class="contact-paypal-text">
-            <span class="contact-paypal-label">Donar con PayPal</span>
+            <span class="contact-paypal-label">{{ t('contact.donatePaypal') }}</span>
           </span>
           <span class="contact-paypal-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="currentColor">

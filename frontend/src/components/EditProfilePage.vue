@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronLeft, Eye, EyeOff } from 'lucide-vue-next'
 import { useToast } from '../composables/useToast'
 import { useAccount } from '../composables/useAccount'
 
 const props = defineProps<{ username: string, profileImage: string | null, initialSection: 'profile' | 'password'}>()
-
 const emit = defineEmits<{ back: [], profileUpdated: [username: string] }>()
 
 const toast = useToast()
 const { updateProfile, changePassword: changePasswordRequest } = useAccount()
+const { t } = useI18n()
 
 const activeSection = ref<'profile' | 'password'>(props.initialSection)
 
@@ -44,11 +45,11 @@ async function saveProfile() {
 
 async function changePassword() {
   if (newPassword.value !== confirmPassword.value) {
-    toast.error('Las contraseñas no coinciden')
+    toast.error(t('toast.passwordsDontMatch'))
     return
   }
   if (newPassword.value.length < 8) {
-    toast.error('La contraseña debe tener mínimo 8 caracteres')
+    toast.error(t('toast.passwordTooShort'))
     return
   }
   passwordLoading.value = true
@@ -64,11 +65,11 @@ async function changePassword() {
 <template>
   <div class="edit-profile">
     <div class="edit-header">
-      <button class="btn-back" @click="emit('back')" aria-label="Volver">
+      <button class="btn-back" @click="emit('back')" :aria-label="t('editProfile.backAria')">
         <ChevronLeft :stroke-width="2.2" />
       </button>
       <h1 class="edit-title">
-        {{ activeSection === 'password' ? 'Cambiar contraseña' : 'Editar perfil' }}
+        {{ activeSection === 'password' ? t('editProfile.titlePassword') : t('editProfile.titleProfile') }}
       </h1>
     </div>
 
@@ -79,26 +80,26 @@ async function changePassword() {
           <img v-else-if="profileImage" :src="profileImage" alt="Avatar" class="avatar-img" />
           <span v-else class="avatar-letter">{{ username.charAt(0).toUpperCase() }}</span>
         </div>
-        <span class="avatar-label">Cambiar foto</span>
+        <span class="avatar-label">{{ t('editProfile.changePhoto') }}</span>
         <input ref="avatarInput" type="file" accept="image/*" hidden @change="onAvatarChange" />
       </div>
 
       <div class="field">
-        <label class="field-label">Nombre de usuario</label>
-        <input v-model="newUsername" type="text" class="field-input" placeholder="Tu nombre" />
+        <label class="field-label">{{ t('editProfile.username') }}</label>
+        <input v-model="newUsername" type="text" class="field-input" :placeholder="t('editProfile.usernamePlaceholder')" />
       </div>
 
       <button class="btn-save" :disabled="profileLoading" @click="saveProfile">
-        {{ profileLoading ? 'Guardando...' : 'Guardar cambios' }}
+        {{ profileLoading ? t('editProfile.saving') : t('editProfile.saveChanges') }}
       </button>
     </div>
 
     <div v-if="activeSection === 'password'" class="section">
       <div class="field">
-        <label class="field-label">Contraseña actual</label>
+        <label class="field-label">{{ t('editProfile.currentPassword') }}</label>
         <div class="field-wrap">
-          <input v-model="currentPassword" :type="showCurrentPassword ? 'text' : 'password'" class="field-input" placeholder="Tu contraseña actual" autocomplete="current-password" />
-          <button type="button" class="btn-eye" @click="showCurrentPassword = !showCurrentPassword" :aria-label="showCurrentPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+          <input v-model="currentPassword" :type="showCurrentPassword ? 'text' : 'password'" class="field-input" :placeholder="t('editProfile.currentPasswordPlaceholder')" autocomplete="current-password" />
+          <button type="button" class="btn-eye" @click="showCurrentPassword = !showCurrentPassword" :aria-label="showCurrentPassword ? t('editProfile.hidePasswordAria') : t('editProfile.showPasswordAria')">
             <Eye v-if="!showCurrentPassword" :stroke-width="1.8" />
             <EyeOff v-else :stroke-width="1.8" />
           </button>
@@ -106,10 +107,10 @@ async function changePassword() {
       </div>
 
       <div class="field">
-        <label class="field-label">Nueva contraseña</label>
+        <label class="field-label">{{ t('editProfile.newPassword') }}</label>
         <div class="field-wrap">
-          <input v-model="newPassword" :type="showNewPassword ? 'text' : 'password'" class="field-input" placeholder="Mínimo 8 caracteres" autocomplete="new-password" />
-          <button type="button" class="btn-eye" @click="showNewPassword = !showNewPassword" :aria-label="showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+          <input v-model="newPassword" :type="showNewPassword ? 'text' : 'password'" class="field-input" :placeholder="t('editProfile.newPasswordPlaceholder')" autocomplete="new-password" />
+          <button type="button" class="btn-eye" @click="showNewPassword = !showNewPassword" :aria-label="showNewPassword ? t('editProfile.hidePasswordAria') : t('editProfile.showPasswordAria')">
             <Eye v-if="!showNewPassword" :stroke-width="1.8" />
             <EyeOff v-else :stroke-width="1.8" />
           </button>
@@ -117,10 +118,10 @@ async function changePassword() {
       </div>
 
       <div class="field">
-        <label class="field-label">Confirmar contraseña</label>
+        <label class="field-label">{{ t('editProfile.confirmPassword') }}</label>
         <div class="field-wrap">
-          <input v-model="confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" class="field-input" placeholder="Repite la nueva contraseña" autocomplete="new-password" />
-          <button type="button" class="btn-eye" @click="showConfirmPassword = !showConfirmPassword" :aria-label="showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+          <input v-model="confirmPassword" :type="showConfirmPassword ? 'text' : 'password'" class="field-input" :placeholder="t('editProfile.confirmPasswordPlaceholder')" autocomplete="new-password" />
+          <button type="button" class="btn-eye" @click="showConfirmPassword = !showConfirmPassword" :aria-label="showConfirmPassword ? t('editProfile.hidePasswordAria') : t('editProfile.showPasswordAria')">
             <Eye v-if="!showConfirmPassword" :stroke-width="1.8" />
             <EyeOff v-else :stroke-width="1.8" />
           </button>
@@ -128,7 +129,7 @@ async function changePassword() {
       </div>
 
       <button class="btn-save" :disabled="passwordLoading || !currentPassword || !newPassword || !confirmPassword" @click="changePassword">
-        {{ passwordLoading ? 'Cambiando...' : 'Cambiar contraseña' }}
+        {{ passwordLoading ? t('editProfile.changing') : t('editProfile.changePassword') }}
       </button>
     </div>
   </div>

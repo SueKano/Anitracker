@@ -1,6 +1,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from './useToast'
 import type { LastUpdate, LastUpdateView, LastUpdateResponse } from '../types/LastUpdate'
+import { t } from '../i18n'
 
 export function useLastUpdates() {
   const toast = useToast()
@@ -14,7 +15,7 @@ export function useLastUpdates() {
     try {
       const response = await fetch('/api/user/getLastUpdates', { credentials: 'include' })
       if (!response.ok) {
-        toast.error('No se pudo cargar la actividad reciente')
+        toast.error(t('toast.activityLoadError'))
         return
       }
       const data: LastUpdateResponse = await response.json()
@@ -26,7 +27,7 @@ export function useLastUpdates() {
         progress: update.lastEpisodeWatchedCount,
       }))
     } catch {
-      toast.error('No se pudo cargar la actividad reciente')
+      toast.error(t('toast.activityLoadError'))
     }
   }
 
@@ -36,7 +37,7 @@ export function useLastUpdates() {
 }
 
 function describeUpdate(update: LastUpdate): { prefix: string; suffix: string } {
-  if (update.progress === 0) return { prefix: 'Has añadido ', suffix: ' a tu lista' }
-  if (update.isCompleted) return { prefix: 'Has terminado ', suffix: '' }
-  return { prefix: `Has visto el capítulo ${update.progress} de `, suffix: '' }
+  if (update.progress === 0) return { prefix: t('activity.addedPrefix'), suffix: t('activity.addedSuffix') }
+  if (update.isCompleted) return { prefix: t('activity.finishedPrefix'), suffix: '' }
+  return { prefix: t('activity.watchedPrefix', { count: update.progress }), suffix: '' }
 }

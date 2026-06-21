@@ -1,7 +1,9 @@
 import { ref } from 'vue'
 import type { Anime } from '../types/Anime'
+import type { ApiError, UserSeriesPayload } from '../types/Api'
 import { useToast } from './useToast'
 import { progressPercent, availableEpisodes } from '../utils/animeStats'
+import { t, errorMessage } from '../i18n'
 
 export function useUserSeries() {
   const toast = useToast()
@@ -12,31 +14,33 @@ export function useUserSeries() {
     try {
       const response = await fetch('/api/series/getUserSeries', { credentials: 'include' })
       if (!response.ok) {
-        toast.error('No se pudieron cargar tus series')
+        toast.error(t('toast.seriesLoadError'))
         return
       }
-      const data = await response.json()
-      animeList.value = (data.userSeries ?? []).map((userSeries: any) => ({
+
+      const data = await response.json() as { userSeries: UserSeriesPayload[] }
+      animeList.value = data.userSeries.map((userSeries): Anime => ({
         id: userSeries.series.anilistId,
         title: userSeries.series.romajiName,
-        cover: userSeries.series.portraitUrl,
+        cover: userSeries.series.portraitUrl ?? '',
         progress: userSeries.lastEpisodeWatchedCount,
         total: userSeries.series.totalEpisodes,
         aired: userSeries.series.currentAiringEpisode,
         airing: userSeries.series.airingStatus === 'RELEASING',
         airingStatus: userSeries.series.airingStatus,
+        isAdult: userSeries.series.isAdult,
         favorite: userSeries.isFavourite,
         dayOfWeek: userSeries.series.airingDay,
-        genre: (userSeries.series.genres ?? []).join(', '),
+        genre: userSeries.series.genres.join(', '),
         isCompleted: userSeries.isCompleted,
-        season: userSeries.series.season,
+        season: userSeries.series.season ?? '',
         format: userSeries.series.format,
         source: userSeries.series.source || null,
-        seasonYear: userSeries.series.seasonYear,
+        seasonYear: userSeries.series.seasonYear ?? 0,
         isTracked: true,
       }))
     } catch {
-      toast.error('No se pudieron cargar tus series')
+      toast.error(t('toast.seriesLoadError'))
     }
   }
 
@@ -50,20 +54,21 @@ export function useUserSeries() {
         body: JSON.stringify({ anilistId: anime.id }),
         credentials: 'include'
       })
-      const data = await response.json()
-      if (response.ok) {
-        anime.progress = data.lastEpisodeWatched
-        anime.isCompleted = data.isCompleted
-        if (data.isCompleted) {
-          toast.success(anime.format === 'MOVIE' ? 'Película finalizada' : 'Serie finalizada')
-        } else {
-          toast.success('Capítulo añadido')
-        }
+      if (!response.ok) {
+        const data = await response.json() as ApiError
+        toast.error(errorMessage(data.errorCode))
+        return
+      }
+      const data = await response.json() as { lastEpisodeWatched: number; isCompleted: boolean }
+      anime.progress = data.lastEpisodeWatched
+      anime.isCompleted = data.isCompleted
+      if (data.isCompleted) {
+        toast.success(anime.format === 'MOVIE' ? t('toast.movieFinished') : t('toast.seriesFinished'))
       } else {
-        toast.error(data.error)
+        toast.success(t('toast.episodeAdded'))
       }
     } catch {
-      toast.error('Error de conexión')
+      toast.error(t('toast.connectionErrorShort'))
     } finally {
       pendingEpisodeIds.value.delete(anime.id)
       pendingEpisodeIds.value = new Set(pendingEpisodeIds.value)
@@ -78,9 +83,9 @@ export function useUserSeries() {
         body: JSON.stringify({ anilistId })
       })
       if (response.ok) await fetchUserSeries()
-      else toast.error('No se pudo eliminar la serie')
+      else toast.error(t('toast.seriesDeleteError'))
     } catch {
-      toast.error('No se pudo eliminar la serie')
+      toast.error(t('toast.seriesDeleteError'))
     }
   }
 
@@ -89,9 +94,17 @@ export function useUserSeries() {
     if (anime) anime.favorite = isFavourite
   }
 
+  function setAiredEpisode(id: number, aired: number) {
+    const anime = animeList.value.find(a => a.id === id)
+    if (anime) {
+      anime.aired = aired
+      anime.total = aired
+    }
+  }
+
   function clearList() {
     animeList.value = []
   }
 
-  return {animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, clearList, progressPercent, availableEpisodes}
+  return {animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, setAiredEpisode, clearList, progressPercent, availableEpisodes}
 }

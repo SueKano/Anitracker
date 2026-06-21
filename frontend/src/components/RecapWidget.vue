@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-vue-next'
 import type { Recap } from '../types/Recap'
 import { formatDuration, getWatchTimeParts } from '../utils/formatDuration'
@@ -7,6 +8,7 @@ import { translateSeason, translateFormat, translateGenre } from '../utils/trans
 
 const props = defineProps<{ recap: Recap }>()
 const emit = defineEmits<{ close: [] }>()
+const { t } = useI18n()
 
 const completionRatio = computed(() => {
   if (!props.recap.worksAdded) return null
@@ -27,19 +29,19 @@ const pairSlides = computed(() => {
   const { firstWatched, lastWatched, fastestSeries, slowestSeries } = props.recap
   return [
     {
-      label: 'Primera y última serie',
-      title: 'Inicio y final',
+      label: t('recap.firstLastLabel'),
+      title: t('recap.firstLastTitle'),
       cards: [
-        { tag: 'Primera', userSeries: firstWatched, duration: null as number | null },
-        { tag: 'Última', userSeries: lastWatched, duration: null as number | null },
+        { tag: t('recap.tagFirst'), userSeries: firstWatched, duration: null as number | null },
+        { tag: t('recap.tagLast'), userSeries: lastWatched, duration: null as number | null },
       ],
     },
     {
-      label: 'A tu ritmo',
-      title: 'Tus dos extremos',
+      label: t('recap.paceLabel'),
+      title: t('recap.paceTitle'),
       cards: [
-        { tag: 'Más rápida', userSeries: fastestSeries.userSeries, duration: fastestSeries.duration },
-        { tag: 'Más lenta', userSeries: slowestSeries.userSeries, duration: slowestSeries.duration },
+        { tag: t('recap.tagFastest'), userSeries: fastestSeries.userSeries, duration: fastestSeries.duration },
+        { tag: t('recap.tagSlowest'), userSeries: slowestSeries.userSeries, duration: slowestSeries.duration },
       ],
     },
   ]
@@ -81,8 +83,8 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 <template>
   <div class="recap-overlay">
     <header class="recap-header">
-      <span class="recap-year">Tu recap {{ recap.year }}</span>
-      <button class="recap-close" aria-label="Cerrar" @click="emit('close')">
+      <span class="recap-year">{{ t('recap.year', { year: recap.year }) }}</span>
+      <button class="recap-close" :aria-label="t('recap.closeAria')" @click="emit('close')">
         <X :stroke-width="2" />
       </button>
     </header>
@@ -94,18 +96,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <Sparkles class="sparkle sparkle-2" :stroke-width="1.5" />
           <Sparkles class="sparkle sparkle-3" :stroke-width="1.5" />
         </div>
-        <p class="intro-tagline">Bienvenido a tu anirecap</p>
+        <p class="intro-tagline">{{ t('recap.introTagline') }}</p>
         <h1 class="intro-year">{{ recap.year }}</h1>
-        <p class="intro-hint">Toca para empezar</p>
+        <p class="intro-hint">{{ t('recap.introHint') }}</p>
       </section>
 
       <section class="recap-slide">
         <header class="slide-heading">
-          <span class="slide-label">Tu temporada con mayor actividad ha sido</span>
+          <span class="slide-label">{{ t('recap.topSeasonLabel') }}</span>
           <h2 class="slide-title">{{ translateSeason(recap.topSeason) }}</h2>
-          <span class="slide-label">con un total de {{ recap.totalSeriesSeason }} series</span>
+          <span class="slide-label">{{ t('recap.seasonTotal', { count: recap.totalSeriesSeason }) }}</span>
         </header>
-        <span class="slide-caption">Algunas de las series que viste</span>
+        <span class="slide-caption">{{ t('recap.someSeries') }}</span>
         <div class="season-posters" :class="`count-${recap.topSeriesSeason.length}`">
           <figure v-for="userSeries in recap.topSeriesSeason" :key="userSeries.series.romajiName">
             <img :src="userSeries.series.portraitUrl" :alt="userSeries.series.romajiName" loading="lazy"/>
@@ -114,7 +116,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
       </section>
 
-      <section v-for="(slide, slideIdx) in pairSlides" :key="slide.title" class="recap-slide">
+      <section v-for="(slide, slideIdx) in pairSlides" :key="slideIdx" class="recap-slide">
         <template v-if="maxSlideSeen >= slideIdx + 1">
           <header class="slide-heading">
             <span class="slide-label">{{ slide.label }}</span>
@@ -135,15 +137,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
       <section class="recap-slide">
         <header class="slide-heading">
-          <span class="slide-label">Tu año</span>
-          <h2 class="slide-title">En cifras</h2>
+          <span class="slide-label">{{ t('recap.yourYear') }}</span>
+          <h2 class="slide-title">{{ t('recap.inNumbers') }}</h2>
         </header>
 
         <div class="cifras">
           <div class="cifras-pair">
             <div class="cifras-cell">
               <p class="cifras-num">{{ recap.worksCompleted.total }}</p>
-              <p class="cifras-label">series completadas</p>
+              <p class="cifras-label">{{ t('recap.seriesCompleted') }}</p>
             </div>
             <div class="cifras-cell">
               <p class="cifras-time">
@@ -152,25 +154,27 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
                   <span class="cifras-time-unit">{{ part.unit }}</span>
                 </span>
               </p>
-              <p class="cifras-label">de anime</p>
+              <p class="cifras-label">{{ t('recap.ofAnime') }}</p>
             </div>
           </div>
 
           <div v-if="completionRatio !== null" class="cifras-ratio">
-            <p class="cifras-ratio-text">
-              De las <span class="cifras-ratio-num">{{ recap.worksAdded }}</span> series que empezaste este año, terminaste <span class="cifras-ratio-num">{{ recap.worksCompleted.total }}</span> &mdash; un <span class="cifras-ratio-num">{{ completionRatio }}%</span> de finalización.
-            </p>
+            <i18n-t keypath="recap.ratio" tag="p" class="cifras-ratio-text">
+              <template #added><span class="cifras-ratio-num">{{ recap.worksAdded }}</span></template>
+              <template #completed><span class="cifras-ratio-num">{{ recap.worksCompleted.total }}</span></template>
+              <template #percent><span class="cifras-ratio-num">{{ completionRatio }}%</span></template>
+            </i18n-t>
           </div>
         </div>
       </section>
 
       <section class="recap-slide">
         <header class="slide-heading">
-          <h2 class="slide-title">Tus preferencias</h2>
+          <h2 class="slide-title">{{ t('recap.preferences') }}</h2>
         </header>
 
         <div class="dist-block">
-          <h3 class="dist-title">Por formato</h3>
+          <h3 class="dist-title">{{ t('recap.byFormat') }}</h3>
           <div class="dist-rows">
             <div v-for="(count, format) in recap.worksCompleted.formats" :key="format" class="dist-row">
               <span class="dist-name">{{ translateFormat(format) }}</span>
@@ -180,7 +184,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </div>
 
         <div class="dist-block">
-          <h3 class="dist-title">Géneros favoritos</h3>
+          <h3 class="dist-title">{{ t('recap.favGenres') }}</h3>
           <div class="dist-rows">
             <div v-for="(count, genre) in recap.topGenres" :key="genre" class="dist-row">
               <span class="dist-name">{{ translateGenre(genre) }}</span>
@@ -191,15 +195,15 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
       </section>
     </div>
 
-    <button v-if="currentSlide > 0" class="nav-arrow nav-arrow-left" aria-label="Anterior" @click="prevSlide">
+    <button v-if="currentSlide > 0" class="nav-arrow nav-arrow-left" :aria-label="t('recap.prevAria')" @click="prevSlide">
       <ChevronLeft :stroke-width="2" />
     </button>
-    <button v-if="!isIntro && currentSlide < TOTAL_SLIDES - 1" class="nav-arrow nav-arrow-right" aria-label="Siguiente" @click="nextSlide">
+    <button v-if="!isIntro && currentSlide < TOTAL_SLIDES - 1" class="nav-arrow nav-arrow-right" :aria-label="t('recap.nextAria')" @click="nextSlide">
       <ChevronRight :stroke-width="2" />
     </button>
 
     <div v-if="!isIntro" class="recap-dots">
-      <button v-for="i in TOTAL_SLIDES - 1" :key="i" class="recap-dot" :class="{ active: currentSlide === i }" :aria-label="`Slide ${i}`"
+      <button v-for="i in TOTAL_SLIDES - 1" :key="i" class="recap-dot" :class="{ active: currentSlide === i }" :aria-label="t('recap.slideAria', { n: i })"
               @click="currentSlide = i"/>
     </div>
   </div>

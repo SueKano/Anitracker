@@ -7,6 +7,7 @@ export type Anime = {
   aired: number
   airing: boolean
   airingStatus: string
+  isAdult: boolean
   favorite: boolean
   dayOfWeek: string | null
   genre: string

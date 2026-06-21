@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Sparkles, SquarePen, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { setLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import EditProfilePage from './EditProfilePage.vue'
 import PrivacyPolicyPage from './PrivacyPolicyPage.vue'
 import ContactPage from './ContactPage.vue'
@@ -10,17 +12,24 @@ import { useRecap } from '../composables/useRecap'
 import { useLastUpdates } from '../composables/useLastUpdates'
 import { useAccount } from '../composables/useAccount'
 import type { Anime } from '../types/Anime'
+import { translateGenre } from '../utils/translateLabels'
 
 const props = defineProps<{ username: string, profileImage: string | null, animeList: Anime[] }>()
 const emit = defineEmits<{ back: [], accountDeleted: [], profileUpdated: [username: string], selectAnime: [id: number] }>()
 
-const EPISODE_MINUTES = 23
+const EPISODE_MINUTES = 22
 const MINUTES_PER_DAY = 60 * 24
 
 const toast = useToast()
 const { recap, fetchRecap } = useRecap()
 const { lastUpdatesView } = useLastUpdates()
 const { deleteAccount } = useAccount()
+const { t, locale } = useI18n()
+
+const locales = SUPPORTED_LOCALES
+function changeLocale(value: Locale) {
+  setLocale(value)
+}
 
 const showRecap = ref(false)
 const confirmDialog = ref<HTMLDialogElement | null>(null)
@@ -52,7 +61,7 @@ const genreDistribution = computed(() => {
 async function openRecap() {
   await fetchRecap(new Date().getFullYear())
   if (!recap.value) {
-    toast.warning('Se necesitan 8 series para poder crear tu recap')
+    toast.warning(t('toast.recapNeed8'))
     return
   }
   showRecap.value = true
@@ -72,11 +81,11 @@ async function confirmDeleteAccount() {
 
   <div v-else class="profile">
     <div class="profile-header">
-      <button class="btn-icon" aria-label="Volver" @click="emit('back')">
+      <button class="btn-icon" :aria-label="t('profile.backAria')" @click="emit('back')">
         <ChevronLeft :stroke-width="2.2" />
       </button>
-      <span class="profile-title">PERFIL</span>
-      <button class="btn-icon" aria-label="Editar perfil" @click="editSection = 'profile'">
+      <span class="profile-title">{{ t('profile.title') }}</span>
+      <button class="btn-icon" :aria-label="t('profile.editAria')" @click="editSection = 'profile'">
         <SquarePen :stroke-width="2" />
       </button>
     </div>
@@ -91,42 +100,42 @@ async function confirmDeleteAccount() {
 
     <div class="stats-grid">
       <div class="stat-card">
-        <span class="stat-label">EP. VISTOS</span>
+        <span class="stat-label">{{ t('profile.stats.episodesWatched') }}</span>
         <span class="stat-value">{{ episodesWatched }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">SERIES</span>
+        <span class="stat-label">{{ t('profile.stats.series') }}</span>
         <span class="stat-value">{{ animeList.length }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">FAVORITOS</span>
+        <span class="stat-label">{{ t('profile.stats.favorites') }}</span>
         <span class="stat-value">{{ favoritesCount }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">DÍAS VISTOS</span>
+        <span class="stat-label">{{ t('profile.stats.daysWatched') }}</span>
         <span class="stat-value">{{ daysWatched }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">EN EMISIÓN</span>
+        <span class="stat-label">{{ t('profile.stats.airing') }}</span>
         <span class="stat-value">{{ currentlyWatching }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">COMPLETADAS</span>
+        <span class="stat-label">{{ t('profile.stats.completed') }}</span>
         <span class="stat-value">{{ completedCount }}</span>
       </div>
     </div>
 
     <button v-if="isDecember" class="recap-cta" @click="openRecap">
       <Sparkles :stroke-width="1.8" />
-      <span>Ver tu recap del año</span>
+      <span>{{ t('common.recapCta') }}</span>
     </button>
 
     <div v-if="genreDistribution.length" class="section-block">
-      <p class="section-label">GÉNEROS MÁS CONSUMIDOS</p>
+      <p class="section-label">{{ t('profile.topGenres') }}</p>
       <div class="genre-list">
         <div v-for="genre in genreDistribution" :key="genre.genre" class="genre-row">
           <div class="genre-head">
-            <span class="genre-name">{{ genre.genre }}</span>
+            <span class="genre-name">{{ translateGenre(genre.genre) }}</span>
             <span class="genre-pct">{{ genre.percent }}%</span>
           </div>
           <div class="genre-track">
@@ -137,7 +146,7 @@ async function confirmDeleteAccount() {
     </div>
 
     <div class="section-block">
-      <p class="section-label">ACTIVIDAD RECIENTE</p>
+      <p class="section-label">{{ t('profile.recentActivity') }}</p>
       <div v-if="lastUpdatesView.length" class="activity-list">
         <div v-for="update in lastUpdatesView" :key="update.id" class="activity-row">
           <img v-if="update.cover" :src="update.cover" :alt="update.title" class="activity-cover" loading="lazy" />
@@ -149,36 +158,46 @@ async function confirmDeleteAccount() {
         </div>
       </div>
       <div v-else class="activity-empty">
-        <span>Sin actividad reciente</span>
+        <span>{{ t('profile.noActivity') }}</span>
       </div>
     </div>
 
     <div class="section-block">
-      <p class="section-label">CUENTA</p>
+      <p class="section-label">{{ t('profile.language') }}</p>
+      <div class="lang-switch">
+        <button v-for="local in locales" :key="local" class="lang-btn" :class="{ active: locale === local }"
+                @click="changeLocale(local)">
+          {{ local.toUpperCase() }}
+        </button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <p class="section-label">{{ t('profile.account') }}</p>
       <div class="action-list">
         <button class="action-row" @click="editSection = 'password'">
-          <span class="action-row-text">Cambiar contraseña</span>
+          <span class="action-row-text">{{ t('profile.changePassword') }}</span>
           <ChevronRight />
         </button>
         <button class="action-row" @click="infoSection = 'privacy'">
-          <span class="action-row-text">Política de privacidad</span>
+          <span class="action-row-text">{{ t('profile.privacyPolicy') }}</span>
           <ChevronRight />
         </button>
         <button class="action-row" @click="infoSection = 'contact'">
-          <span class="action-row-text">Contacto y donaciones</span>
+          <span class="action-row-text">{{ t('profile.contactDonations') }}</span>
           <ChevronRight />
         </button>
       </div>
     </div>
 
     <button class="delete-btn" @click="confirmDialog?.showModal()">
-      Borrar cuenta
+      {{ t('profile.deleteAccount') }}
     </button>
     <dialog ref="confirmDialog" class="confirm-dialog" @click.self="confirmDialog?.close()">
-      <p class="confirm-text">¿Estás seguro de que quieres borrar tu cuenta?</p>
+      <p class="confirm-text">{{ t('profile.confirmDelete') }}</p>
       <div class="confirm-actions">
-        <button class="confirm-cancel" @click="confirmDialog?.close()">Cancelar</button>
-        <button class="confirm-delete" @click="confirmDeleteAccount">Borrar</button>
+        <button class="confirm-cancel" @click="confirmDialog?.close()">{{ t('profile.cancel') }}</button>
+        <button class="confirm-delete" @click="confirmDeleteAccount">{{ t('profile.delete') }}</button>
       </div>
     </dialog>
   </div>

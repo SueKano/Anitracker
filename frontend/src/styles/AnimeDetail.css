@@ -332,3 +332,77 @@
 .toast-leave-to {
   opacity: 0;
 }
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.admin-modal {
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-md);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+.admin-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+
+.admin-modal-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.admin-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.admin-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.admin-modal-cancel,
+.admin-modal-save {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.1s;
+}
+
+.admin-modal-cancel {
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  color: var(--text-2);
+}
+
+.admin-modal-save {
+  background: var(--accent);
+  color: var(--bg);
+}
+.admin-modal-save:active { opacity: 0.85; }
