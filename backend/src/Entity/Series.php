@@ -298,7 +298,7 @@ class Series extends AbstractEntity
         $this->currentAiringEpisode = match (true) {
             $next !== null => $next['episode'] - 1,
             $this->airingStatus === SeriesStatus::FINISHED->value => $this->totalEpisodes,
-            default => 0,
+            default => self::resolveLastAiredEpisode($media),
         };
 
         $airingAt = $next['airingAt'] ?? null;
@@ -321,5 +321,13 @@ class Series extends AbstractEntity
         $nodes = $data['airingSchedule']['nodes'] ?? [];
 
         return max([0, ...array_column($nodes, 'episode')]);
+    }
+
+    public static function resolveLastAiredEpisode(array $data): int
+    {
+        $now = time();
+        $airingEpisodes = array_filter($data['airingSchedule']['nodes'] ?? [], static fn (array $node) => $node['airingAt'] <= $now);
+
+        return max([0, ...array_column($airingEpisodes, 'episode')]);
     }
 }
