@@ -17,7 +17,7 @@ import type { Anime } from '../types/Anime'
 import { translateDay, resolveAiringStatus } from '../utils/translateLabels'
 import { Search, User, MoreVertical, Trash2, Home, Calendar, Heart, Sparkles } from 'lucide-vue-next'
 
-const { isLoggedIn, currentUsername, currentProfileImage, checkSession, setUser, clearSession } = useSession()
+const { isLoggedIn, currentUsername, currentProfileImage, isAdmin, checkSession, setUser, clearSession } = useSession()
 const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
 const { searchQuery, searchFocused, searchResults, searchLoading, searchHasMore, searchLimited, loadMoreResults, clearSearch } = useSeriesSearch()
 const { recap, fetchRecap } = useRecap()
@@ -146,7 +146,7 @@ const filters = [
   </div>
 
   <RecapWidget v-if="showRecap && recap" :recap="recap" @close="showRecap = false"/>
-  <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" @close="selectedAnime = null; isNewAnime = false"
+  <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" :is-admin="isAdmin" @close="selectedAnime = null; isNewAnime = false"
                @favorite-changed="setFavorite" @adult-episode-changed="setAiredEpisode" @goToHome="selectedAnime = null;
                isNewAnime = false; activeTab = 'home'; fetchUserSeries()"/>
 
