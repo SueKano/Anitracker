@@ -9,7 +9,6 @@ use App\Entity\UserSeries;
 use App\Enum\ErrorCode;
 use App\Enum\SeriesStatus;
 use App\Exception\AnilistUnavailableException;
-use App\Exception\JikanUnavailableException;
 use App\Repository\SeriesRepository;
 use App\Services\AnilistApiClient;
 use App\Services\SeriesRefresher;
@@ -177,7 +176,6 @@ class SeriesController extends AbstractController
             }
 
             $series = Series::createSeriesFromAnilistData($media);
-            $this->refreshAdultSeriesFromMal($series);
             $this->entityManager->persist($series);
             $this->entityManager->flush();
         }
@@ -209,7 +207,6 @@ class SeriesController extends AbstractController
             }
 
             $series = Series::createSeriesFromAnilistData($media);
-            $this->refreshAdultSeriesFromMal($series);
             $isNewSeries = true;
         }
 
@@ -260,12 +257,13 @@ class SeriesController extends AbstractController
         if (!$series->getIsAdult()) {
             return $this->json(['errorCode' => ErrorCode::SERIES_NOT_ADULT->value], Response::HTTP_BAD_REQUEST);
         }
-        if ($seriesData['currentAiringEpisode'] < 1 || $seriesData['currentAiringEpisode'] > 12){
+        if ($seriesData['currentAiringEpisode'] < 1 || $seriesData['currentAiringEpisode'] > 25){
             return $this->json(['errorCode' => ErrorCode::INVALID_VALUE->value], Response::HTTP_BAD_REQUEST);
         }
 
         $series->setCurrentAiringEpisode($seriesData['currentAiringEpisode']);
         $series->setTotalEpisodes($seriesData['currentAiringEpisode']);
+        $series->setAiringStatus($seriesData['isFinished'] ? SeriesStatus::FINISHED->value : SeriesStatus::RELEASING->value);
         $this->entityManager->flush();
 
         return $this->json(['status' => 'ok']);
@@ -294,15 +292,5 @@ class SeriesController extends AbstractController
     private function findOneSeriesByAnilistId(int $anilistId): ?Series
     {
         return $this->entityManager->getRepository(Series::class)->findOneByAnilistId($anilistId);
-    }
-
-    private function refreshAdultSeriesFromMal(Series $series): void
-    {
-        if ($series->getIsAdult()){
-            try {
-                $this->seriesRefresher->refreshFromMal($series);
-            } catch (JikanUnavailableException) {
-            }
-        }
     }
 }

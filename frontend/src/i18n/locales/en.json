@@ -84,6 +84,7 @@
     "addFavorite": "ADD TO FAVORITES",
     "editAiredEpisode": "EDIT AIRED EPISODE",
     "airedEpisodeLabel": "Last aired episode",
+    "markFinished": "Series finished",
     "info": "Information"
   },
   "login": {

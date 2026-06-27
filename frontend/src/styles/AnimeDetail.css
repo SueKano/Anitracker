@@ -379,6 +379,17 @@
   font-weight: 600;
 }
 
+.admin-modal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
 .admin-modal-actions {
   display: flex;
   gap: 8px;

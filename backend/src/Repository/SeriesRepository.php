@@ -40,17 +40,6 @@ class SeriesRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    public function findAdultSeriesForAutoRefresh(): array
-    {
-        return $this->createQueryBuilder('s')
-            ->where('s.isAdult = true')
-            ->andWhere('(s.airingStatus != :finished OR s.totalEpisodes IS NULL OR s.totalEpisodes = 0)')
-            ->andWhere('(s.lastRefreshedAt IS NULL OR s.lastRefreshedAt <= :adultSeriesThreshold)')
-            ->setParameter('finished', SeriesStatus::FINISHED->value)
-            ->setParameter('adultSeriesThreshold', new \DateTime(SeriesRefresher::ADULT_SERIES_TTL))
-            ->getQuery()
-            ->getResult();
-    }
     public function searchSimilarAnime(string $query, int $limit = 20): array
     {
         $normalizedQuery = mb_strtolower(trim($query));

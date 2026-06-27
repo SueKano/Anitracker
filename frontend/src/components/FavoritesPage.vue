@@ -123,8 +123,8 @@ const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genr
       <div v-for="anime in favorites" :key="anime.id" class="tile" @click="emit('select', anime.id)">
         <div class="tile-cover">
           <img :src="anime.cover" :alt="anime.title" loading="lazy" />
-          <span v-if="anime.airing" class="airing-badge"><i />{{ translateDay(anime.dayOfWeek) }}</span>
-          <span v-else class="done-badge">{{ t('common.completed') }}</span>
+          <span v-if="anime.done" class="done-badge">{{ t('common.completed') }}</span>
+          <span v-else-if="anime.airing && !anime.isAdult" class="airing-badge"><i />{{ translateDay(anime.dayOfWeek) }}</span>
         </div>
         <p class="tile-title">{{ anime.title }}</p>
         <div class="tile-progress">

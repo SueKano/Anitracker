@@ -8,7 +8,7 @@ import { progressPercent as computeProgressPercent, episodesBehind } from '../ut
 import type { Anime } from '../types/Anime'
 
 const props = defineProps<{ anime: Anime; isNew?: boolean; isAdmin?: boolean }>()
-const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], adultEpisodeChanged: [id: number, aired: number] }>()
+const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], adultEpisodeChanged: [id: number, aired: number, airingStatus: string] }>()
 
 const { fetchAnilistDetails, createUserSeries, toggleFavourite, updateAdultEpisode } = useSeries()
 const { t } = useI18n()
@@ -18,18 +18,23 @@ const detailsLoading = ref(false)
 
 const adminEditOpen = ref(false)
 const adminEpisodeInput = ref(1)
+const adminFinishedInput = ref(false)
 
 function openAdminEdit() {
   adminEpisodeInput.value = details.value.aired
+  adminFinishedInput.value = details.value.airingStatus === 'FINISHED'
   adminEditOpen.value = true
 }
 
 async function saveAdminEdit() {
-  const success = await updateAdultEpisode(details.value.id, adminEpisodeInput.value)
+  const success = await updateAdultEpisode(details.value.id, adminEpisodeInput.value, adminFinishedInput.value)
   if (success) {
+    const airingStatus = adminFinishedInput.value ? 'FINISHED' : 'RELEASING'
     details.value.aired = adminEpisodeInput.value
     details.value.total = adminEpisodeInput.value
-    emit('adultEpisodeChanged', details.value.id, adminEpisodeInput.value)
+    details.value.airingStatus = airingStatus
+    details.value.airing = airingStatus === 'RELEASING'
+    emit('adultEpisodeChanged', details.value.id, adminEpisodeInput.value, airingStatus)
     adminEditOpen.value = false
   }
 }
@@ -84,6 +89,10 @@ async function addSeriesToFavourites() {
       <h3 class="admin-modal-title">{{ details.title }}</h3>
       <label class="admin-modal-label">{{ t('detail.airedEpisodeLabel') }}</label>
       <input v-model.number="adminEpisodeInput" type="number" min="1" max="12" class="admin-modal-input" @keyup.enter="saveAdminEdit" />
+      <label class="admin-modal-check">
+        <input v-model="adminFinishedInput" type="checkbox" />
+        {{ t('detail.markFinished') }}
+      </label>
       <div class="admin-modal-actions">
         <button class="admin-modal-cancel" @click="adminEditOpen = false">{{ t('common.cancel') }}</button>
         <button class="admin-modal-save" @click="saveAdminEdit">{{ t('common.save') }}</button>
@@ -142,7 +151,7 @@ async function addSeriesToFavourites() {
         <Heart :fill="details.favorite ? 'currentColor' : 'none'" />
         {{ t('detail.addFavorite') }}
       </button>
-      <button v-if="isAdmin && details.isAdult && details.airing" class="action-btn" @click="openAdminEdit()">
+      <button v-if="isAdmin && details.isAdult" class="action-btn" @click="openAdminEdit()">
         <Pencil :stroke-width="2" />
         {{ t('detail.editAiredEpisode') }}
       </button>

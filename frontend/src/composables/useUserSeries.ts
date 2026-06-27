@@ -94,11 +94,13 @@ export function useUserSeries() {
     if (anime) anime.favorite = isFavourite
   }
 
-  function setAiredEpisode(id: number, aired: number) {
+  function setAiredEpisode(id: number, aired: number, airingStatus: string) {
     const anime = animeList.value.find(a => a.id === id)
     if (anime) {
       anime.aired = aired
       anime.total = aired
+      anime.airingStatus = airingStatus
+      anime.airing = airingStatus === 'RELEASING'
     }
   }
 

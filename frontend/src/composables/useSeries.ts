@@ -69,12 +69,12 @@ export function useSeries() {
     }
   }
 
-  async function updateAdultEpisode(anilistId: number, currentAiringEpisode: number): Promise<boolean> {
+  async function updateAdultEpisode(anilistId: number, currentAiringEpisode: number, isFinished: boolean): Promise<boolean> {
     try {
       const response = await fetch('/api/series/updateEpisodeToAdultSeries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ anilistId, currentAiringEpisode }),
+        body: JSON.stringify({ anilistId, currentAiringEpisode, isFinished }),
         credentials: 'include'
       })
       if (response.ok) {
