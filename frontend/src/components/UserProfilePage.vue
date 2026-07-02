@@ -23,7 +23,7 @@ const MINUTES_PER_DAY = 60 * 24
 const toast = useToast()
 const { recap, fetchRecap } = useRecap()
 const { lastUpdatesView } = useLastUpdates()
-const { deleteAccount, updateProfile } = useAccount()
+const { deleteAccount, updateAvatar } = useAccount()
 const { t, locale } = useI18n()
 
 const locales = SUPPORTED_LOCALES
@@ -36,7 +36,6 @@ const confirmDialog = ref<HTMLDialogElement | null>(null)
 const editSection = ref<'profile' | 'password' | null>(null)
 const infoSection = ref<'privacy' | 'contact' | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
-const avatarUploading = ref(false)
 
 const isDecember = computed(() => new Date().getMonth() === 11)
 const episodesWatched = computed(() => props.animeList.reduce((sum, anime) => sum + anime.progress, 0))
@@ -78,11 +77,9 @@ async function onAvatarChange(event: Event) {
   const file = input.files?.[0]
   input.value = ''
   if (!file) return
-  avatarUploading.value = true
-  if (await updateProfile(props.username, file)) {
+  if (await updateAvatar(props.username, file)) {
     emit('profileUpdated', props.username)
   }
-  avatarUploading.value = false
 }
 </script>
 
@@ -105,11 +102,11 @@ async function onAvatarChange(event: Event) {
     </div>
 
     <div class="profile-identity">
-      <button class="profile-avatar" type="button" :aria-label="t('profile.changePhotoAria')" @click="!avatarUploading && avatarInput?.click()">
+      <button class="profile-avatar" type="button" :aria-label="t('profile.changePhotoAria')" @click="avatarInput?.click()">
         <img v-if="profileImage" :src="profileImage" alt="Avatar" class="profile-avatar-img" />
         <span v-else class="profile-avatar-letter">{{ username.charAt(0).toUpperCase() }}</span>
-        <input ref="avatarInput" type="file" accept="image/*" hidden @change="onAvatarChange" />
       </button>
+      <input ref="avatarInput" type="file" accept="image/*" hidden @change="onAvatarChange" />
       <h1 class="profile-username">{{ username }}</h1>
     </div>
 

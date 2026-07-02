@@ -9,7 +9,7 @@ const props = defineProps<{ username: string, initialSection: 'profile' | 'passw
 const emit = defineEmits<{ back: [], profileUpdated: [username: string] }>()
 
 const toast = useToast()
-const { updateProfile, changePassword: changePasswordRequest } = useAccount()
+const { renameUser, changePassword: changePasswordRequest } = useAccount()
 const { t } = useI18n()
 
 const activeSection = ref<'profile' | 'password'>(props.initialSection)
@@ -27,7 +27,7 @@ const showConfirmPassword = ref(false)
 
 async function saveProfile() {
   profileLoading.value = true
-  if (await updateProfile(newUsername.value, null)) {
+  if (await renameUser(newUsername.value)) {
     emit('profileUpdated', newUsername.value)
   }
   profileLoading.value = false

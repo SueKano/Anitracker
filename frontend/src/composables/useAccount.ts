@@ -22,12 +22,8 @@ export function useAccount() {
     }
   }
 
-  async function updateProfile(username: string, avatar: File | null): Promise<boolean> {
+  async function submitUserUpdate(formData: FormData): Promise<boolean> {
     try {
-      const formData = new FormData()
-      formData.append('username', username)
-      if (avatar) formData.append('newProfileImage', avatar)
-
       const response = await fetch('/api/user/updateUser', {
         method: 'POST',
         body: formData,
@@ -44,6 +40,19 @@ export function useAccount() {
       toast.error(t('toast.connectionError'))
       return false
     }
+  }
+
+  async function renameUser(username: string): Promise<boolean> {
+    const formData = new FormData()
+    formData.append('username', username)
+    return submitUserUpdate(formData)
+  }
+
+  async function updateAvatar(username: string, avatar: File): Promise<boolean> {
+    const formData = new FormData()
+    formData.append('username', username)
+    formData.append('newProfileImage', avatar)
+    return submitUserUpdate(formData)
   }
 
   async function changePassword(currentPassword: string, newPassword: string): Promise<boolean> {
@@ -67,5 +76,5 @@ export function useAccount() {
     }
   }
 
-  return { deleteAccount, updateProfile, changePassword }
+  return { deleteAccount, renameUser, updateAvatar, changePassword }
 }
