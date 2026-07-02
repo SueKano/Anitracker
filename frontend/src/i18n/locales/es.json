@@ -82,6 +82,7 @@
     "upcoming": "Próximamente",
     "addAnime": "AÑADIR ANIME",
     "addFavorite": "AÑADIR A FAVORITOS",
+    "removeFavorite": "ELIMINAR DE FAVORITOS",
     "editAiredEpisode": "EDITAR EPISODIO EMITIDO",
     "airedEpisodeLabel": "Último episodio emitido",
     "markFinished": "Serie finalizada",
@@ -114,6 +115,7 @@
     "backAria": "Volver",
     "title": "PERFIL",
     "editAria": "Editar perfil",
+    "changePhotoAria": "Cambiar foto de perfil",
     "stats": {
       "episodesWatched": "EP. VISTOS",
       "series": "SERIES",
@@ -139,7 +141,6 @@
     "backAria": "Volver",
     "titleProfile": "Editar perfil",
     "titlePassword": "Cambiar contraseña",
-    "changePhoto": "Cambiar foto",
     "username": "Nombre de usuario",
     "usernamePlaceholder": "Tu nombre",
     "saving": "Guardando...",

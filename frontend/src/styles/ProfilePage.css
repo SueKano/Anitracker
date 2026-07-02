@@ -58,6 +58,7 @@
 .profile-avatar {
   width: 92px;
   height: 92px;
+  padding: 0;
   border-radius: 50%;
   background: var(--surface-2);
   border: 1px solid var(--border-md);
@@ -65,6 +66,7 @@
   place-items: center;
   overflow: hidden;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
 .profile-avatar-img {

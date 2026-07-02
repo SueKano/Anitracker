@@ -149,7 +149,7 @@ async function addSeriesToFavourites() {
       </button>
       <button v-if="!isNew" class="action-btn" :class="{ 'action-btn--active': details.favorite }" @click="addSeriesToFavourites()">
         <Heart :fill="details.favorite ? 'currentColor' : 'none'" />
-        {{ t('detail.addFavorite') }}
+        {{ details.favorite ? t('detail.removeFavorite') : t('detail.addFavorite') }}
       </button>
       <button v-if="isAdmin && details.isAdult" class="action-btn" @click="openAdminEdit()">
         <Pencil :stroke-width="2" />

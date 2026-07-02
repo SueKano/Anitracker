@@ -5,7 +5,7 @@ import { ChevronLeft, Eye, EyeOff } from 'lucide-vue-next'
 import { useToast } from '../composables/useToast'
 import { useAccount } from '../composables/useAccount'
 
-const props = defineProps<{ username: string, profileImage: string | null, initialSection: 'profile' | 'password'}>()
+const props = defineProps<{ username: string, initialSection: 'profile' | 'password'}>()
 const emit = defineEmits<{ back: [], profileUpdated: [username: string] }>()
 
 const toast = useToast()
@@ -15,8 +15,6 @@ const { t } = useI18n()
 const activeSection = ref<'profile' | 'password'>(props.initialSection)
 
 const newUsername = ref(props.username)
-const avatarFile = ref<File | null>(null)
-const avatarPreview = ref<string | null>(null)
 const profileLoading = ref(false)
 
 const currentPassword = ref('')
@@ -27,17 +25,9 @@ const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
 
-function onAvatarChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  avatarFile.value = file
-  avatarPreview.value = URL.createObjectURL(file)
-}
-
 async function saveProfile() {
   profileLoading.value = true
-  if (await updateProfile(newUsername.value, avatarFile.value)) {
+  if (await updateProfile(newUsername.value, null)) {
     emit('profileUpdated', newUsername.value)
   }
   profileLoading.value = false
@@ -74,16 +64,6 @@ async function changePassword() {
     </div>
 
     <div v-if="activeSection === 'profile'" class="section">
-      <div class="avatar-upload" @click="($refs.avatarInput as HTMLInputElement).click()">
-        <div class="avatar-circle">
-          <img v-if="avatarPreview" :src="avatarPreview" alt="Avatar" class="avatar-img" />
-          <img v-else-if="profileImage" :src="profileImage" alt="Avatar" class="avatar-img" />
-          <span v-else class="avatar-letter">{{ username.charAt(0).toUpperCase() }}</span>
-        </div>
-        <span class="avatar-label">{{ t('editProfile.changePhoto') }}</span>
-        <input ref="avatarInput" type="file" accept="image/*" hidden @change="onAvatarChange" />
-      </div>
-
       <div class="field">
         <label class="field-label">{{ t('editProfile.username') }}</label>
         <input v-model="newUsername" type="text" class="field-input" :placeholder="t('editProfile.usernamePlaceholder')" />

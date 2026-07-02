@@ -117,49 +117,6 @@
   margin-top: 16px;
 }
 
-.avatar-upload {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 8px 0;
-}
-
-.avatar-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #2a2535 0%, #1a1720 100%);
-  border: 2px solid var(--border-md);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-
-.avatar-upload:active .avatar-circle {
-  border-color: rgba(134, 59, 255, 0.4);
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.avatar-letter {
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--text);
-}
-
-.avatar-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-2);
-}
-
 .field {
   display: flex;
   flex-direction: column;

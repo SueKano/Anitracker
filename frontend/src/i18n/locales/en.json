@@ -82,6 +82,7 @@
     "upcoming": "Upcoming",
     "addAnime": "ADD ANIME",
     "addFavorite": "ADD TO FAVORITES",
+    "removeFavorite": "REMOVE FROM FAVORITES",
     "editAiredEpisode": "EDIT AIRED EPISODE",
     "airedEpisodeLabel": "Last aired episode",
     "markFinished": "Series finished",
@@ -114,6 +115,7 @@
     "backAria": "Back",
     "title": "PROFILE",
     "editAria": "Edit profile",
+    "changePhotoAria": "Change profile photo",
     "stats": {
       "episodesWatched": "EP. WATCHED",
       "series": "SERIES",
@@ -139,7 +141,6 @@
     "backAria": "Back",
     "titleProfile": "Edit profile",
     "titlePassword": "Change password",
-    "changePhoto": "Change photo",
     "username": "Username",
     "usernamePlaceholder": "Your name",
     "saving": "Saving...",
