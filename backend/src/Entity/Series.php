@@ -300,6 +300,9 @@ class Series extends AbstractEntity
             $this->airingStatus === SeriesStatus::FINISHED->value => $this->totalEpisodes,
             default => self::resolveLastAiredEpisode($media),
         };
+        if ($this->airingStatus === SeriesStatus::NOT_YET_RELEASED->value && $this->currentAiringEpisode >= 1 && $this->totalEpisodes !== $this->currentAiringEpisode) {
+            $this->airingStatus = SeriesStatus::RELEASING->value;
+        }
 
         $airingAt = $next['airingAt'] ?? null;
         $this->nextAiringAt = $airingAt ? new \DateTime()->setTimestamp($airingAt) : null;
