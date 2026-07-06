@@ -289,7 +289,7 @@ class Series extends AbstractEntity
         $this->season = $media['season'] ?? null;
         $this->seasonYear = $media['seasonYear'] ?? 0;
         $this->format = $media['format'] ?? '';
-        $this->synonyms = $media['synonyms'] ?? [];
+        $this->synonyms = array_values(array_unique([...$this->synonyms, ...($media['synonyms'] ?? [])]));
         $this->idMal = $media['idMal'] ?? null;
         $this->isAdult = $media['isAdult'] ?? false;
         $this->totalEpisodes = max($this->totalEpisodes, self::resolveTotalEpisodes($media));
