@@ -300,6 +300,7 @@ class Series extends AbstractEntity
             $this->airingStatus === SeriesStatus::FINISHED->value => $this->totalEpisodes,
             default => self::resolveLastAiredEpisode($media),
         };
+
         if ($this->airingStatus === SeriesStatus::NOT_YET_RELEASED->value && $this->currentAiringEpisode >= 1 && $this->totalEpisodes !== $this->currentAiringEpisode) {
             $this->airingStatus = SeriesStatus::RELEASING->value;
         }
@@ -308,6 +309,7 @@ class Series extends AbstractEntity
         $this->nextAiringAt = $airingAt ? new \DateTime()->setTimestamp($airingAt) : null;
         $this->airingDay = ($airingAt && !$this->isAdult && $this->airingStatus === SeriesStatus::RELEASING->value) ?
             strtoupper(new DateTimeImmutable('@'.$airingAt)->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l')) : null;
+
         return $this;
     }
 

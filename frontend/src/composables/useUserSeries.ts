@@ -9,10 +9,13 @@ export function useUserSeries() {
   const toast = useToast()
   const animeList = ref<Anime[]>([])
   const pendingEpisodeIds = ref<Set<number>>(new Set())
+  let listAbortController: AbortController | null = null
 
   async function fetchUserSeries() {
+    listAbortController?.abort()
+    listAbortController = new AbortController()
     try {
-      const response = await fetch('/api/series/getUserSeries', { credentials: 'include' })
+      const response = await fetch('/api/series/getUserSeries', { credentials: 'include', signal: listAbortController.signal })
       if (!response.ok) {
         toast.error(t('toast.seriesLoadError'))
         return
@@ -39,7 +42,8 @@ export function useUserSeries() {
         seasonYear: userSeries.series.seasonYear ?? 0,
         isTracked: true,
       }))
-    } catch {
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
       toast.error(t('toast.seriesLoadError'))
     }
   }
@@ -60,8 +64,12 @@ export function useUserSeries() {
         return
       }
       const data = await response.json() as { lastEpisodeWatched: number; isCompleted: boolean }
-      anime.progress = data.lastEpisodeWatched
-      anime.isCompleted = data.isCompleted
+      listAbortController?.abort()
+      const target = animeList.value.find(item => item.id === anime.id)
+      if (target) {
+        target.progress = data.lastEpisodeWatched
+        target.isCompleted = data.isCompleted
+      }
       if (data.isCompleted) {
         toast.success(anime.format === 'MOVIE' ? t('toast.movieFinished') : t('toast.seriesFinished'))
       } else {
