@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Heart, Pencil } from 'lucide-vue-next'
 import { useSeries } from '../composables/useSeries'
@@ -15,6 +15,10 @@ const { t } = useI18n()
 
 const details = ref<Anime>({ ...props.anime })
 const detailsLoading = ref(false)
+
+watch(() => props.anime, (next) => {
+  details.value = { ...next }
+}, { deep: true })
 
 const adminEditOpen = ref(false)
 const adminEpisodeInput = ref(1)

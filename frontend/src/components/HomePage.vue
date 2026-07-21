@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CalendarPage from './CalendarPage.vue'
 import FavoritesPage from './FavoritesPage.vue'
@@ -31,6 +31,17 @@ const showRecap = ref(false)
 const searchScrollEl = ref<HTMLElement | null>(null)
 const searchAtBottom = ref(false)
 
+const activeFilter = ref<'watching' | 'completed' | 'all'>('watching')
+const activeTab = ref<'home' | 'calendar' | 'favorites' | 'profile'>('home')
+
+const selectedAnimeId = ref<number | null>(null)
+const selectedNewAnime = ref<Anime | null>(null)
+const isNewAnime = ref(false)
+const openMenuId = ref<number | null>(null)
+
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000
+let refreshIntervalId: ReturnType<typeof setInterval> | undefined
+
 function updateSearchAtBottom() {
   const el = searchScrollEl.value
   if (!el) {
@@ -49,6 +60,10 @@ watch(searchQuery, () => {
 
 watch(searchResults, () => { void nextTick(updateSearchAtBottom) })
 
+watch(activeTab, tab => {
+  if (tab === 'home' && isLoggedIn.value) fetchUserSeries()
+})
+
 async function openRecap() {
   await fetchRecap(new Date().getFullYear())
   if (!recap.value) {
@@ -58,12 +73,11 @@ async function openRecap() {
   showRecap.value = true
 }
 
-const activeFilter = ref<'watching' | 'completed' | 'all'>('watching')
-const activeTab = ref<'home' | 'calendar' | 'favorites' | 'profile'>('home')
-
-const selectedAnime = ref<Anime | null>(null)
-const isNewAnime = ref(false)
-const openMenuId = ref<number | null>(null)
+const selectedAnime = computed<Anime | null>(() => {
+  if (isNewAnime.value) return selectedNewAnime.value
+  if (selectedAnimeId.value === null) return null
+  return animeList.value.find(anime => anime.id === selectedAnimeId.value) ?? null
+})
 
 const filteredList = computed(() => {
   if (activeFilter.value === 'all') return animeList.value
@@ -75,8 +89,9 @@ function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? n
 async function selectSearchResult(result: Anime) {
   if (!(await ensureAdultAccess(result.isAdult))) return
   const alreadyTracked = animeList.value.find(anime => anime.id === result.id)
-  selectedAnime.value = alreadyTracked ?? { ...result }
   isNewAnime.value = !alreadyTracked
+  selectedNewAnime.value = alreadyTracked ? null : { ...result }
+  selectedAnimeId.value = alreadyTracked ? alreadyTracked.id : null
   clearSearch()
 }
 
@@ -84,14 +99,26 @@ async function openDetail(id: number) {
   const anime = animeList.value.find(a => a.id === id)
   if (!anime) return
   if (!(await ensureAdultAccess(anime.isAdult))) return
-  selectedAnime.value = anime
+  isNewAnime.value = false
+  selectedNewAnime.value = null
+  selectedAnimeId.value = id
+}
+
+function closeDetail() {
+  selectedAnimeId.value = null
+  selectedNewAnime.value = null
   isNewAnime.value = false
 }
 
-async function handleLoginSuccess(username: string) {
+function handleAddedToHome() {
+  closeDetail()
+  activeTab.value = 'home'
+  fetchUserSeries()
+}
+
+function handleLoginSuccess(username: string) {
   setUser(username)
   activeTab.value = 'home'
-  await fetchUserSeries()
 }
 
 async function handleRegisterSuccess(username: string){
@@ -109,14 +136,20 @@ function handleGoogleLogin() {
   window.location.href = '/api/auth/google'
 }
 
-function handleVisibilityChange() {
+function refreshIfVisible() {
   if (document.visibilityState === 'visible' && isLoggedIn.value) fetchUserSeries()
 }
 
 onMounted(async () => {
   await checkSession()
   if (isLoggedIn.value) await fetchUserSeries()
-  document.addEventListener('visibilitychange', handleVisibilityChange)
+  document.addEventListener('visibilitychange', refreshIfVisible)
+  refreshIntervalId = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', refreshIfVisible)
+  clearInterval(refreshIntervalId)
 })
 
 const tabs: { id: typeof activeTab.value, icon: string }[] = [
@@ -146,9 +179,8 @@ const filters = [
   </div>
 
   <RecapWidget v-if="showRecap && recap" :recap="recap" @close="showRecap = false"/>
-  <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" :is-admin="isAdmin" @close="selectedAnime = null; isNewAnime = false"
-               @favorite-changed="setFavorite" @adult-episode-changed="setAiredEpisode" @goToHome="selectedAnime = null;
-               isNewAnime = false; activeTab = 'home'; fetchUserSeries()"/>
+  <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" :is-admin="isAdmin" @close="closeDetail"
+               @favorite-changed="setFavorite" @adult-episode-changed="setAiredEpisode" @goToHome="handleAddedToHome"/>
 
   <header v-show="activeTab === 'home'" class="header">
     <div class="header-row">
