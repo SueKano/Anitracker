@@ -140,15 +140,21 @@ function refreshIfVisible() {
   if (document.visibilityState === 'visible' && isLoggedIn.value) fetchUserSeries()
 }
 
+function refreshIfRestoredFromCache(event: PageTransitionEvent) {
+  if (event.persisted) refreshIfVisible()
+}
+
 onMounted(async () => {
   await checkSession()
   if (isLoggedIn.value) await fetchUserSeries()
   document.addEventListener('visibilitychange', refreshIfVisible)
+  window.addEventListener('pageshow', refreshIfRestoredFromCache)
   refreshIntervalId = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
 })
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', refreshIfVisible)
+  window.removeEventListener('pageshow', refreshIfRestoredFromCache)
   clearInterval(refreshIntervalId)
 })
 
