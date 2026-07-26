@@ -145,11 +145,12 @@ function refreshIfRestoredFromCache(event: PageTransitionEvent) {
 }
 
 onMounted(async () => {
-  await checkSession()
-  if (isLoggedIn.value) await fetchUserSeries()
   document.addEventListener('visibilitychange', refreshIfVisible)
   window.addEventListener('pageshow', refreshIfRestoredFromCache)
   refreshIntervalId = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
+
+  await checkSession()
+  if (isLoggedIn.value) await fetchUserSeries()
 })
 
 onUnmounted(() => {
