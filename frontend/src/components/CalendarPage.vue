@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Calendar } from 'lucide-vue-next'
 import { translateDay, translateDayAbbr } from '../utils/translateLabels.ts'
@@ -14,20 +14,32 @@ const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'
 
 function jsToIdx(weekday: number) { return weekday === 0 ? 6 : weekday - 1 }
 
-const now = new Date()
-const todayIdx = jsToIdx(now.getDay())
+const today = ref(new Date())
+const todayIdx = computed(() => jsToIdx(today.value.getDay()))
 
-const monday = new Date(now)
-monday.setDate(now.getDate() - todayIdx)
+const weekDates = computed(() => {
+  const monday = new Date(today.value)
+  monday.setDate(today.value.getDate() - todayIdx.value)
 
-const weekDates = Array.from({ length: 7 }, (_, index) => {
-  const date = new Date(monday)
-  date.setDate(monday.getDate() + index)
-  return date.getDate()
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    return date.getDate()
+  })
 })
 
-const selected = ref(todayIdx)
+const selected = ref(todayIdx.value)
 const selectedDayKey = computed(() => DAYS[selected.value])
+
+function refreshToday() {
+  if (document.visibilityState !== 'visible') return
+  const previousTodayIdx = todayIdx.value
+  today.value = new Date()
+  if (selected.value === previousTodayIdx) selected.value = todayIdx.value
+}
+
+onMounted(() => document.addEventListener('visibilitychange', refreshToday))
+onUnmounted(() => document.removeEventListener('visibilitychange', refreshToday))
 
 const animeByDay = computed(() => {
   const map = new Map<string, Anime[]>()
@@ -44,12 +56,14 @@ const animeByDay = computed(() => {
 const daysView = computed(() => DAYS.map((day, i) => ({
   abbr: translateDayAbbr(day),
   key: day,
-  date: weekDates[i],
+  date: weekDates.value[i],
   hasAnime: animeByDay.value.has(day),
 })))
 
 const dayAnime = computed(() =>
-  (animeByDay.value.get(selectedDayKey.value) ?? []).map(anime => ({ ...anime, behind: episodesBehind(anime) }))
+  (animeByDay.value.get(selectedDayKey.value) ?? [])
+    .map(anime => ({ ...anime, behind: episodesBehind(anime) }))
+    .sort((first, second) => second.behind - first.behind)
 )
 </script>
 
