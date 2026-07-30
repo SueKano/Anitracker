@@ -19,6 +19,8 @@ export type SeriesPayload = {
 export type UserSeriesPayload = {
   series: SeriesPayload
   lastEpisodeWatchedCount: number
+  countEpisodesCompleted: number
   isFavourite: boolean
   isCompleted: boolean
+  isRewatching: boolean
 }

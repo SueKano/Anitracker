@@ -54,7 +54,7 @@ class SeriesRepository extends ServiceEntityRepository
              OR f_unaccent(LOWER(romaji_name)) % f_unaccent(:query)
              OR f_unaccent(LOWER(COALESCE(english_name, ''))) % f_unaccent(:query)
              OR EXISTS (
-                 SELECT 1 FROM jsonb_array_elements_text(synonyms) AS synonym
+                 SELECT 1 FROM json_array_elements_text(synonyms) AS synonym
                  WHERE f_unaccent(LOWER(synonym)) ILIKE f_unaccent(:likeQuery)
                     OR f_unaccent(LOWER(synonym)) % f_unaccent(:query)
              )

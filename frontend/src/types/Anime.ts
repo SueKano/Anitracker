@@ -3,6 +3,7 @@ export type Anime = {
   title: string
   cover: string
   progress: number
+  episodesWatched: number
   total: number
   aired: number
   airing: boolean
@@ -12,6 +13,7 @@ export type Anime = {
   dayOfWeek: string | null
   genre: string
   isCompleted: boolean
+  isRewatching: boolean
   source: string | null
   seasonYear: number
   season: string

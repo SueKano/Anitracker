@@ -38,7 +38,7 @@ const infoSection = ref<'privacy' | 'contact' | null>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 
 const isDecember = computed(() => new Date().getMonth() === 11)
-const episodesWatched = computed(() => props.animeList.reduce((sum, anime) => sum + anime.progress, 0))
+const episodesWatched = computed(() => props.animeList.reduce((sum, anime) => sum + anime.episodesWatched, 0))
 const favoritesCount = computed(() => props.animeList.filter(anime => anime.favorite).length)
 const currentlyWatching = computed(() => props.animeList.filter(anime => anime.airingStatus === 'RELEASING').length)
 const completedCount = computed(() => props.animeList.filter(anime => anime.isCompleted).length)

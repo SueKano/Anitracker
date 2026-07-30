@@ -8,6 +8,7 @@ enum ErrorCode: string
     case SERIES_NOT_FOUND = 'series_not_found';
     case SERIES_NOT_IN_LIST = 'series_not_in_list';
     case SERIES_ALREADY_COMPLETED = 'series_already_completed';
+    case SERIES_NOT_COMPLETED = 'series_not_completed';
     case SERIES_NOT_ADULT = 'series_not_adult';
     case SERIES_NOT_YET_RELEASED = 'series_not_yet_released';
     case SERIES_LOOKUP_FAILED = 'series_lookup_failed';

@@ -27,6 +27,7 @@ class UserSeries extends AbstractEntity
     private bool $isFavourite = false;
 
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    #[Groups(['userProfile:series', 'home:userSeries', 'detail:userSeries'])]
     private int $countEpisodesCompleted = 0;
 
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
@@ -41,6 +42,21 @@ class UserSeries extends AbstractEntity
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     #[Groups(['userProfile:series', 'home:userSeries','detail:userSeries'])]
     private bool $isCompleted = false;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    #[Groups(['userProfile:series', 'home:userSeries','detail:userSeries'])]
+    private bool $isRewatching = false;
+
+    public function isRewatching(): bool
+    {
+        return $this->isRewatching;
+    }
+
+    public function setIsRewatching(bool $isRewatching): UserSeries
+    {
+        $this->isRewatching = $isRewatching;
+        return $this;
+    }
 
     public function isCompleted(): bool
     {

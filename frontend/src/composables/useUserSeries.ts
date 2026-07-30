@@ -30,6 +30,7 @@ export function useUserSeries() {
           title: userSeries.series.romajiName,
           cover: userSeries.series.portraitUrl ?? '',
           progress: Math.max(userSeries.lastEpisodeWatchedCount, previous?.progress ?? 0),
+          episodesWatched: userSeries.countEpisodesCompleted,
           total: userSeries.series.totalEpisodes,
           aired: userSeries.series.currentAiringEpisode,
           airing: userSeries.series.airingStatus === 'RELEASING',
@@ -39,6 +40,7 @@ export function useUserSeries() {
           dayOfWeek: userSeries.series.airingDay,
           genre: userSeries.series.genres.join(', '),
           isCompleted: userSeries.isCompleted,
+          isRewatching: userSeries.isRewatching,
           season: userSeries.series.season ?? '',
           format: userSeries.series.format,
           source: userSeries.series.source || null,
@@ -67,13 +69,17 @@ export function useUserSeries() {
         toast.error(errorMessage(data.errorCode))
         return
       }
-      const data = await response.json() as { lastEpisodeWatched: number; isCompleted: boolean }
+      const data = await response.json() as { lastEpisodeWatched: number; countEpisodesCompleted: number; isCompleted: boolean; isRewatching: boolean; justCompleted: boolean; rewatchFinished: boolean }
       const target = animeList.value.find(item => item.id === anime.id)
       if (target) {
         target.progress = data.lastEpisodeWatched
+        target.episodesWatched = data.countEpisodesCompleted
         target.isCompleted = data.isCompleted
+        target.isRewatching = data.isRewatching
       }
-      if (data.isCompleted) {
+      if (data.rewatchFinished) {
+        toast.success(t('toast.rewatchFinished'))
+      } else if (data.justCompleted) {
         toast.success(anime.format === 'MOVIE' ? t('toast.movieFinished') : t('toast.seriesFinished'))
       } else {
         toast.success(t('toast.episodeAdded'))
@@ -105,6 +111,14 @@ export function useUserSeries() {
     if (anime) anime.favorite = isFavourite
   }
 
+  function markRewatch(id: number) {
+    const anime = animeList.value.find(a => a.id === id)
+    if (anime) {
+      anime.isRewatching = true
+      anime.progress = 0
+    }
+  }
+
   function setAiredEpisode(id: number, aired: number, airingStatus: string) {
     const anime = animeList.value.find(a => a.id === id)
     if (anime) {
@@ -119,5 +133,5 @@ export function useUserSeries() {
     animeList.value = []
   }
 
-  return {animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, setAiredEpisode, clearList, progressPercent, availableEpisodes}
+  return {animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes}
 }

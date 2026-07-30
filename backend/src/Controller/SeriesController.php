@@ -110,12 +110,17 @@ class SeriesController extends AbstractController
                 return $this->json(['errorCode' => ErrorCode::EPISODE_NOT_AIRED->value], 409);
             }
         }
-        if ($foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes()) {
+        $isLastEpisode = $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes();
+        $justCompleted = $isLastEpisode && !$userSeries->isCompleted();
+        $rewatchFinished = $isLastEpisode && $userSeries->isRewatching();
+
+        if ($isLastEpisode) {
             $userSeries->setIsCompleted(true);
+            $userSeries->setIsRewatching(false);
         }
 
         $userSeries->setLastEpisodeWatchedCount($numberEpisodeToAdd);
-        $userSeries->setCountEpisodesCompleted($numberEpisodeToAdd);
+        $userSeries->setCountEpisodesCompleted($userSeries->getCountEpisodesCompleted() + 1);
 
         $userSeriesHistory = new UserEpisodeWatch();
         $userSeriesHistory->setUser($user);
@@ -124,7 +129,9 @@ class SeriesController extends AbstractController
         $this->entityManager->persist($userSeriesHistory);
         $this->entityManager->flush();
 
-        return $this->json(['lastEpisodeWatched' => $numberEpisodeToAdd, 'isCompleted' => $userSeries->isCompleted()]);
+        return $this->json(['lastEpisodeWatched' => $numberEpisodeToAdd, 'isCompleted' => $userSeries->isCompleted(), 'isRewatching' => $userSeries->isRewatching(),
+            'countEpisodesCompleted' => $userSeries->getCountEpisodesCompleted(), 'justCompleted' => $justCompleted, 'rewatchFinished' => $rewatchFinished,
+        ]);
     }
 
     #[Route('/api/series/getUserSeries', name: 'get_user_series', methods: ['GET'])]
@@ -242,6 +249,29 @@ class SeriesController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json(['isFavourite' => $seriesToChange->IsFavourite()]);
+    }
+
+    #[Route('/api/series/rewatch', name: 'rewatch_series', methods: ['POST'])]
+    public function rewatchUserSeries(Request $request, #[CurrentUser] User $user): Response
+    {
+        $seriesData = json_decode($request->getContent(), true);
+        $foundSeries = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
+        $seriesToChange = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
+        if (!$seriesToChange) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+        }
+        if (!$seriesToChange->isCompleted()) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_COMPLETED->value], Response::HTTP_CONFLICT);
+        }
+        if ($seriesToChange->isRewatching()) {
+            return $this->json(['errorCode' => ErrorCode::SERIES_ALREADY_COMPLETED->value], Response::HTTP_CONFLICT);
+        }
+
+        $seriesToChange->setIsRewatching(true);
+        $seriesToChange->setLastEpisodeWatchedCount(0);
+        $this->entityManager->flush();
+
+        return $this->json(['isRewatching' => $seriesToChange->isRewatching(), 'isCompleted' => $seriesToChange->isCompleted(), 'lastEpisodeWatchedCount' => $seriesToChange->getLastEpisodeWatchedCount()]);
     }
 
     #[Route('/api/series/updateEpisodeToAdultSeries', name: 'update_episode_adult_series', methods: ['POST'])]

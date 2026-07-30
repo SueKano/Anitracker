@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Heart, Pencil } from 'lucide-vue-next'
+import { Heart, Pencil, RotateCcw } from 'lucide-vue-next'
 import { useSeries } from '../composables/useSeries'
 import {translateSeason, translateFormat, translateSource, translateDay, translateGenres, resolveAiringStatus} from '../utils/translateLabels.ts'
 import { progressPercent as computeProgressPercent, episodesBehind } from '../utils/animeStats'
 import type { Anime } from '../types/Anime'
 
 const props = defineProps<{ anime: Anime; isNew?: boolean; isAdmin?: boolean }>()
-const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], adultEpisodeChanged: [id: number, aired: number, airingStatus: string] }>()
+const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], rewatchStarted: [id: number], adultEpisodeChanged: [id: number, aired: number, airingStatus: string] }>()
 
-const { fetchAnilistDetails, createUserSeries, toggleFavourite, updateAdultEpisode } = useSeries()
+const { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, updateAdultEpisode } = useSeries()
 const { t } = useI18n()
 
 const details = ref<Anime>({ ...props.anime })
@@ -85,6 +85,13 @@ async function addSeriesToFavourites() {
   details.value.favorite = isFavourite
   emit('favoriteChanged', props.anime.id, isFavourite)
 }
+
+async function rewatchSeries() {
+  if (!(await rewatch(props.anime.id))) return
+  details.value.isRewatching = true
+  details.value.progress = 0
+  emit('rewatchStarted', props.anime.id)
+}
 </script>
 
 <template>
@@ -154,6 +161,10 @@ async function addSeriesToFavourites() {
       <button v-if="!isNew" class="action-btn" :class="{ 'action-btn--active': details.favorite }" @click="addSeriesToFavourites()">
         <Heart :fill="details.favorite ? 'currentColor' : 'none'" />
         {{ details.favorite ? t('detail.removeFavorite') : t('detail.addFavorite') }}
+      </button>
+      <button v-if="!isNew && details.isCompleted && !details.isRewatching" class="action-btn" @click="rewatchSeries()">
+        <RotateCcw :stroke-width="2" />
+        {{ t('detail.rewatch') }}
       </button>
       <button v-if="isAdmin && details.isAdult" class="action-btn" @click="openAdminEdit()">
         <Pencil :stroke-width="2" />

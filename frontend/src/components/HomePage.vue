@@ -18,7 +18,7 @@ import { translateDay, resolveAiringStatus } from '../utils/translateLabels'
 import { Search, User, MoreVertical, Trash2, Home, Calendar, Heart, Sparkles } from 'lucide-vue-next'
 
 const { isLoggedIn, currentUsername, currentProfileImage, isAdmin, checkSession, setUser, clearSession } = useSession()
-const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
+const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
 const { searchQuery, searchFocused, searchResults, searchLoading, searchHasMore, searchLimited, loadMoreResults, clearSearch } = useSeriesSearch()
 const { recap, fetchRecap } = useRecap()
 const { modalOpen, ensureAdultAccess, confirmAdult, cancelAdult } = useAdultGate()
@@ -81,8 +81,8 @@ const selectedAnime = computed<Anime | null>(() => {
 
 const filteredList = computed(() => {
   if (activeFilter.value === 'all') return animeList.value
-  if (activeFilter.value === 'completed') return animeList.value.filter(a => a.isCompleted)
-  return animeList.value.filter(a => !a.isCompleted)
+  if (activeFilter.value === 'completed') return animeList.value.filter(anime => anime.isCompleted && !anime.isRewatching)
+  return animeList.value.filter(anime => !anime.isCompleted || anime.isRewatching)
 })
 
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
@@ -187,7 +187,7 @@ const filters = [
 
   <RecapWidget v-if="showRecap && recap" :recap="recap" @close="showRecap = false"/>
   <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" :is-admin="isAdmin" @close="closeDetail"
-               @favorite-changed="setFavorite" @adult-episode-changed="setAiredEpisode" @goToHome="handleAddedToHome"/>
+               @favorite-changed="setFavorite" @rewatch-started="markRewatch" @adult-episode-changed="setAiredEpisode" @goToHome="handleAddedToHome"/>
 
   <header v-show="activeTab === 'home'" class="header">
     <div class="header-row">

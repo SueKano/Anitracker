@@ -18,8 +18,10 @@ export function useSeries() {
       return {
         ...mapAnimeFromApi(data.series),
         progress: data.tracking?.lastEpisodeWatchedCount ?? 0,
+        episodesWatched: data.tracking?.countEpisodesCompleted ?? 0,
         favorite: data.tracking?.isFavourite ?? false,
         isCompleted: data.tracking?.isCompleted ?? false,
+        isRewatching: data.tracking?.isRewatching ?? false,
         isTracked: data.tracking !== null,
       }
     } catch {
@@ -69,6 +71,27 @@ export function useSeries() {
     }
   }
 
+  async function rewatch(anilistId: number): Promise<boolean> {
+    try {
+      const response = await fetch('/api/series/rewatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anilistId }),
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        const data = await response.json() as ApiError
+        toast.error(errorMessage(data.errorCode))
+        return false
+      }
+      toast.success(t('toast.rewatchStarted'))
+      return true
+    } catch {
+      toast.error(t('toast.connectionError'))
+      return false
+    }
+  }
+
   async function updateAdultEpisode(anilistId: number, currentAiringEpisode: number, isFinished: boolean): Promise<boolean> {
     try {
       const response = await fetch('/api/series/updateEpisodeToAdultSeries', {
@@ -91,5 +114,5 @@ export function useSeries() {
     }
   }
 
-  return { fetchAnilistDetails, createUserSeries, toggleFavourite, updateAdultEpisode }
+  return { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, updateAdultEpisode }
 }
