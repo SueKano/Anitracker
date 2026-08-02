@@ -136,16 +136,22 @@ function handleGoogleLogin() {
   window.location.href = '/api/auth/google'
 }
 
+function refreshIfLoggedIn() {
+  if (isLoggedIn.value) fetchUserSeries()
+}
+
 function refreshIfVisible() {
-  if (document.visibilityState === 'visible' && isLoggedIn.value) fetchUserSeries()
+  if (document.visibilityState === 'visible') refreshIfLoggedIn()
 }
 
 function refreshIfRestoredFromCache(event: PageTransitionEvent) {
-  if (event.persisted) refreshIfVisible()
+  if (event.persisted) refreshIfLoggedIn()
 }
 
 onMounted(async () => {
   document.addEventListener('visibilitychange', refreshIfVisible)
+  document.addEventListener('resume', refreshIfLoggedIn)
+  window.addEventListener('focus', refreshIfLoggedIn)
   window.addEventListener('pageshow', refreshIfRestoredFromCache)
   refreshIntervalId = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
 
@@ -155,6 +161,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', refreshIfVisible)
+  document.removeEventListener('resume', refreshIfLoggedIn)
+  window.removeEventListener('focus', refreshIfLoggedIn)
   window.removeEventListener('pageshow', refreshIfRestoredFromCache)
   clearInterval(refreshIntervalId)
 })
