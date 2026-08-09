@@ -40,6 +40,16 @@ class SeriesRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function findSeriesPendingCoverMirror(int $limit): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.portraitMirrorUrl IS NULL AND s.portraitUrl IS NOT NULL')
+            ->orderBy('s.id', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function searchSimilarAnime(string $query, int $limit = 20): array
     {
         $normalizedQuery = mb_strtolower(trim($query));

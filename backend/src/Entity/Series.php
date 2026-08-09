@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\SerializedName;
 
 #[ORM\Entity(repositoryClass: SeriesRepository::class)]
 class Series extends AbstractEntity
@@ -20,8 +21,10 @@ class Series extends AbstractEntity
     private string $romajiName;
 
     #[ORM\Column(type:'text', nullable: true)]
-    #[Groups(['recap:series', 'userProfile:series', 'home:userSeries', 'detail:series', 'search:series'])]
     private ?string $portraitUrl = null;
+
+    #[ORM\Column(type:'text', nullable: true)]
+    private ?string $portraitMirrorUrl = null;
 
     #[ORM\Column(type:'string', length: 20, nullable: true)]
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
@@ -72,6 +75,9 @@ class Series extends AbstractEntity
 
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $studios = [];
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $airingSchedule = [];
 
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTime $lastRefreshedAt = null;
@@ -125,6 +131,19 @@ class Series extends AbstractEntity
     {
         $this->studios = $studios;
         return $this;
+    }
+
+    public function getAiringSchedule(): array
+    {
+        return $this->airingSchedule;
+    }
+
+    public function getLastAiredEpisodeFromSchedule(): int
+    {
+        $now = time();
+        $airedEpisodes = array_filter($this->airingSchedule, static fn (array $node) => $node['airingAt'] <= $now);
+
+        return max([0, ...array_column($airedEpisodes, 'episode')]);
     }
 
     public function getTags(): array
@@ -305,6 +324,24 @@ class Series extends AbstractEntity
         return $this;
     }
 
+    public function getPortraitMirrorUrl(): ?string
+    {
+        return $this->portraitMirrorUrl;
+    }
+
+    public function setPortraitMirrorUrl(?string $portraitMirrorUrl): Series
+    {
+        $this->portraitMirrorUrl = $portraitMirrorUrl;
+        return $this;
+    }
+
+    #[Groups(['recap:series', 'userProfile:series', 'home:userSeries', 'detail:series', 'search:series'])]
+    #[SerializedName('portraitUrl')]
+    public function getDisplayPortraitUrl(): ?string
+    {
+        return $this->portraitMirrorUrl ?? $this->portraitUrl;
+    }
+
     public function mapAnilistData(array $media): self
     {
         $this->anilistId = $media['id'];
@@ -323,6 +360,12 @@ class Series extends AbstractEntity
         $this->idMal = $media['idMal'] ?? null;
         $this->isAdult = $media['isAdult'] ?? false;
         $this->totalEpisodes = max($this->totalEpisodes, self::resolveTotalEpisodes($media));
+
+        if (isset($media['airingSchedule']['nodes'])) {
+            $this->airingSchedule = array_values(array_map(
+                static fn (array $node) => ['episode' => $node['episode'], 'airingAt' => $node['airingAt']], $media['airingSchedule']['nodes']
+            ));
+        }
 
         $next = $media['nextAiringEpisode'] ?? null;
         $this->currentAiringEpisode = match (true) {

@@ -92,8 +92,9 @@ readonly class AnilistApiClient
 
         try {
             $responseData = $this->queryAnilist($graphqlQuery, ['search' => $searchTerm, 'page' => $page + 1, 'perPage' => self::SEARCH_PER_PAGE]);
-        } catch (\Throwable) {
-            return ['media' => [], 'pageInfo' => ['hasNextPage' => false]];
+        } catch (HttpExceptionInterface $e) {
+            $this->logger->warning('AniList search failed', ['searchTerm' => $normalizedTerm, 'page' => $page, 'exception' => $e]);
+            throw new AnilistUnavailableException('No se pudo consultar AniList', 0, $e);
         }
 
         $pageNode = $responseData['data']['Page'] ?? ['media' => [], 'pageInfo' => ['hasNextPage' => false]];
