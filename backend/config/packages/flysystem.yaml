@@ -7,3 +7,9 @@ flysystem:
                 client: profile_images.s3_client
                 bucket: '%env(R2_BUCKET)%'
                 prefix: 'avatars'
+        series_images.storage:
+            adapter: 'asyncaws'
+            options:
+                client: profile_images.s3_client
+                bucket: '%env(R2_BUCKET)%'
+                prefix: 'series'

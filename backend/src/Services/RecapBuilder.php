@@ -81,7 +81,7 @@ readonly class RecapBuilder
     {
         $episodes = array_map(fn($userSeries) => $userSeries->getSeries()->getTotalEpisodes(), $genreSeries);
         usort($genreSeries, static fn($first, $second) => $second->getScore() <=> $first->getScore());
-        $portraits = array_map(fn($userSeries) => $userSeries->getSeries()->getPortraitUrl(), array_slice($genreSeries, 0, 3));
+        $portraits = array_map(fn($userSeries) => $userSeries->getSeries()->getDisplayPortraitUrl(), array_slice($genreSeries, 0, 3));
 
         return ['name' => $genre, 'seriesCount' => count($genreSeries), 'episodes' => array_sum($episodes), 'portraits' => $portraits];
     }

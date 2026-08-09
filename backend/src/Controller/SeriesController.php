@@ -93,12 +93,16 @@ class SeriesController extends AbstractController
                     $this->entityManager->flush();
                 }
             } catch (AnilistUnavailableException) {
-                throw new ApiException(ErrorCode::EPISODE_VERIFICATION_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
+                $airedFromSchedule = $foundSeries->getLastAiredEpisodeFromSchedule();
+                if ($airedFromSchedule < $numberEpisodeToAdd) {
+                    throw new ApiException(ErrorCode::EPISODE_VERIFICATION_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
+                }
+                $foundSeries->setCurrentAiringEpisode($airedFromSchedule);
+                $this->entityManager->flush();
             }
 
             if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
-                throw $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value
-                    ? new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT)
+                throw $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value ? new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT)
                     : new ApiException(ErrorCode::EPISODE_NOT_AIRED, Response::HTTP_CONFLICT);
             }
         }
@@ -147,7 +151,11 @@ class SeriesController extends AbstractController
         if ($this->enforceUserAnilistLimits($user, $this->anilistSearchBurstLimiter, $this->anilistSearchHourLimiter, 'search') !== null) {
             return $this->json(['series' => $localSeriesFound, 'hasMore' => false, 'limited' => true], Response::HTTP_OK, [], ['groups' => ['search:series']]);
         }
-        ['series' => $seriesFromAniList, 'hasMore' => $hasMore] = $this->anilistClient->fetchFromAnilist($seriesNameUserInput, $page);
+        try {
+            ['series' => $seriesFromAniList, 'hasMore' => $hasMore] = $this->anilistClient->fetchFromAnilist($seriesNameUserInput, $page);
+        } catch (AnilistUnavailableException) {
+            return $this->json(['series' => $localSeriesFound, 'hasMore' => false, 'limited' => true], Response::HTTP_OK, [], ['groups' => ['search:series']]);
+        }
 
         $localAnilistIds = array_map(fn (Series $series) => $series->getAnilistId(), $localSeriesFound);
         $filteredAnilistSeries = array_filter($seriesFromAniList, fn (Series $series) => !in_array($series->getAnilistId(), $localAnilistIds, true));
