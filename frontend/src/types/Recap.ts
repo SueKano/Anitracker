@@ -8,14 +8,14 @@ type SeriesSerialized = {
 type UserSeriesSerialized = {
   series: SeriesSerialized
   completedAt: string
+  score: number
 }
 
 export type Recap = {
   year: number
   worksCompleted: { total: number; formats: Record<string, number> }
-  worksAdded: number
   episodesWatched: number
-  topGenres: Record<string, number>
+  topGenres: { name: string; seriesCount: number; episodes: number; portraits: string[] }[]
   topSeason: string | null
   topSeriesSeason: UserSeriesSerialized[]
   totalSeriesSeason: number
@@ -23,4 +23,5 @@ export type Recap = {
   lastWatched: UserSeriesSerialized
   slowestSeries: { userSeries: UserSeriesSerialized | null; duration: number }
   fastestSeries: { userSeries: UserSeriesSerialized | null; duration: number }
+  scoreSeries: { top: UserSeriesSerialized[]; average: number; disappointment: UserSeriesSerialized } | null
 }

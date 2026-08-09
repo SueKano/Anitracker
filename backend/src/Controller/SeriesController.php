@@ -9,6 +9,7 @@ use App\Entity\UserSeries;
 use App\Enum\ErrorCode;
 use App\Enum\SeriesStatus;
 use App\Exception\AnilistUnavailableException;
+use App\Exception\ApiException;
 use App\Repository\SeriesRepository;
 use App\Services\AnilistApiClient;
 use App\Services\SeriesRefresher;
@@ -70,11 +71,7 @@ class SeriesController extends AbstractController
     public function deleteSeries(Request $request, #[CurrentUser] User $user): Response
     {
         $seriesData = json_decode($request->getContent(), true);
-        $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
-        $seriesToDelete = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $series]);
-        if (!$seriesToDelete) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
-        }
+        $seriesToDelete = $this->findUserSeries($seriesData['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
 
         $this->entityManager->remove($seriesToDelete);
         $this->entityManager->flush();
@@ -86,13 +83,9 @@ class SeriesController extends AbstractController
     public function addEpisodeToSeries(Request $request, #[CurrentUser] User $user): Response
     {
         $data = json_decode($request->getContent(), true);
-        $foundSeries = $this->findOneSeriesByAnilistId($data['anilistId']);
-        $userSeries = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
+        $userSeries = $this->findUserSeries($data['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
 
-        if ($userSeries === null) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_IN_LIST->value], 404);
-        }
-
+        $foundSeries = $userSeries->getSeries();
         $numberEpisodeToAdd = $userSeries->getLastEpisodeWatchedCount() + 1;
         if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
             try {
@@ -100,14 +93,13 @@ class SeriesController extends AbstractController
                     $this->entityManager->flush();
                 }
             } catch (AnilistUnavailableException) {
-                return $this->json(['errorCode' => ErrorCode::EPISODE_VERIFICATION_FAILED->value], 503);
+                throw new ApiException(ErrorCode::EPISODE_VERIFICATION_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
             }
 
             if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
-                if ($foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value) {
-                    return $this->json(['errorCode' => ErrorCode::SERIES_ALREADY_COMPLETED->value], 409);
-                }
-                return $this->json(['errorCode' => ErrorCode::EPISODE_NOT_AIRED->value], 409);
+                throw $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value
+                    ? new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT)
+                    : new ApiException(ErrorCode::EPISODE_NOT_AIRED, Response::HTTP_CONFLICT);
             }
         }
         $isLastEpisode = $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes();
@@ -173,13 +165,9 @@ class SeriesController extends AbstractController
                 return $limitResponse;
             }
             try {
-                $media = $this->anilistClient->fetchAnilistDataById($anilistId);
+                $media = $this->anilistClient->fetchAnilistDataById($anilistId) ?? throw new ApiException(ErrorCode::SERIES_NOT_FOUND, Response::HTTP_NOT_FOUND);
             } catch (AnilistUnavailableException) {
-                return $this->json(['errorCode' => ErrorCode::SERIES_LOOKUP_FAILED->value], Response::HTTP_SERVICE_UNAVAILABLE);
-            }
-
-            if ($media === null) {
-                return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+                throw new ApiException(ErrorCode::SERIES_LOOKUP_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
             }
 
             $series = Series::createSeriesFromAnilistData($media);
@@ -204,30 +192,27 @@ class SeriesController extends AbstractController
                 return $limitResponse;
             }
             try {
-                $media = $this->anilistClient->fetchAnilistDataById($anilistId);
+                $media = $this->anilistClient->fetchAnilistDataById($anilistId) ?? throw new ApiException(ErrorCode::SERIES_NOT_FOUND, Response::HTTP_NOT_FOUND);
             } catch (AnilistUnavailableException) {
-                return $this->json(['errorCode' => ErrorCode::SERIES_LOOKUP_FAILED->value], Response::HTTP_SERVICE_UNAVAILABLE);
-            }
-
-            if ($media === null) {
-                return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
+                throw new ApiException(ErrorCode::SERIES_LOOKUP_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
             }
 
             $series = Series::createSeriesFromAnilistData($media);
             $isNewSeries = true;
         }
 
-        if ($errorResponse = $this->ensureSeriesIsTrackable($series)) {
-            return $errorResponse;
-        }
+        $this->ensureSeriesIsTrackable($series);
 
         if ($isNewSeries) {
             $this->entityManager->persist($series);
+        } elseif ($this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $series])) {
+            throw new ApiException(ErrorCode::SERIES_ALREADY_IN_LIST, Response::HTTP_CONFLICT);
         }
 
         $userSeries = new UserSeries();
         $userSeries->setUser($user);
         $userSeries->setSeries($series);
+        $userSeries->setLastProgressAt(new \DateTime());
 
         $this->entityManager->persist($userSeries);
         $this->entityManager->flush();
@@ -239,11 +224,7 @@ class SeriesController extends AbstractController
     public function addToFavoriteSeries(Request $request, #[CurrentUser] User $user): Response
     {
         $seriesData = json_decode($request->getContent(), true);
-        $foundSeries = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
-        $seriesToChange = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
-        if (!$seriesToChange) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
-        }
+        $seriesToChange = $this->findUserSeries($seriesData['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
 
         $seriesToChange->setIsFavourite(!$seriesToChange->IsFavourite());
         $this->entityManager->flush();
@@ -255,16 +236,13 @@ class SeriesController extends AbstractController
     public function rewatchUserSeries(Request $request, #[CurrentUser] User $user): Response
     {
         $seriesData = json_decode($request->getContent(), true);
-        $foundSeries = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
-        $seriesToChange = $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $foundSeries]);
-        if (!$seriesToChange) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
-        }
+        $seriesToChange = $this->findUserSeries($seriesData['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
+
         if (!$seriesToChange->isCompleted()) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_COMPLETED->value], Response::HTTP_CONFLICT);
+            throw new ApiException(ErrorCode::SERIES_NOT_COMPLETED, Response::HTTP_CONFLICT);
         }
         if ($seriesToChange->isRewatching()) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_ALREADY_COMPLETED->value], Response::HTTP_CONFLICT);
+            throw new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT);
         }
 
         $seriesToChange->setIsRewatching(true);
@@ -279,16 +257,13 @@ class SeriesController extends AbstractController
     public function updateEpisodeToAdultSeries(Request $request): Response
     {
         $seriesData = json_decode($request->getContent(), true);
-        $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']);
+        $series = $this->findOneSeriesByAnilistId($seriesData['anilistId']) ?? throw new ApiException(ErrorCode::SERIES_NOT_FOUND, Response::HTTP_NOT_FOUND);
 
-        if (!$series) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_FOUND->value], Response::HTTP_NOT_FOUND);
-        }
         if (!$series->getIsAdult()) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_ADULT->value], Response::HTTP_BAD_REQUEST);
+            throw new ApiException(ErrorCode::SERIES_NOT_ADULT, Response::HTTP_BAD_REQUEST);
         }
         if ($seriesData['currentAiringEpisode'] < 1 || $seriesData['currentAiringEpisode'] > 25){
-            return $this->json(['errorCode' => ErrorCode::INVALID_VALUE->value], Response::HTTP_BAD_REQUEST);
+            throw new ApiException(ErrorCode::INVALID_VALUE, Response::HTTP_BAD_REQUEST);
         }
 
         $series->setCurrentAiringEpisode($seriesData['currentAiringEpisode']);
@@ -296,6 +271,24 @@ class SeriesController extends AbstractController
         $series->setAiringStatus($seriesData['isFinished'] ? SeriesStatus::FINISHED->value : SeriesStatus::RELEASING->value);
         $this->entityManager->flush();
 
+        return $this->json(['status' => 'ok']);
+    }
+
+    #[Route('/api/series/score', name: 'set_score_series', methods: ['POST'])]
+    public function applyScoreSeries(Request $request, #[CurrentUser] User $user): Response
+    {
+        $seriesData = json_decode($request->getContent(), true);
+        $seriesToChange = $this->findUserSeries($seriesData['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
+
+        if (!$seriesToChange->isCompleted()) {
+            throw new ApiException(ErrorCode::SERIES_NOT_COMPLETED, Response::HTTP_CONFLICT);
+        }
+        if ($seriesData['score'] < 0 || $seriesData['score'] > 10) {
+            throw new ApiException(ErrorCode::INVALID_VALUE, Response::HTTP_CONFLICT);
+        }
+        $seriesToChange->setScore($seriesData['score']);
+
+        $this->entityManager->flush();
         return $this->json(['status' => 'ok']);
     }
 
@@ -310,17 +303,22 @@ class SeriesController extends AbstractController
         return $episode <= $seriesEpisodes;
     }
 
-    private function ensureSeriesIsTrackable(Series $series): ?Response
+    private function ensureSeriesIsTrackable(Series $series): void
     {
         if ($series->getAiringStatus() === SeriesStatus::NOT_YET_RELEASED->value) {
-            return $this->json(['errorCode' => ErrorCode::SERIES_NOT_YET_RELEASED->value], 409);
+            throw new ApiException(ErrorCode::SERIES_NOT_YET_RELEASED, Response::HTTP_CONFLICT);
         }
-
-        return null;
     }
 
     private function findOneSeriesByAnilistId(int $anilistId): ?Series
     {
         return $this->entityManager->getRepository(Series::class)->findOneByAnilistId($anilistId);
+    }
+
+    private function findUserSeries(int $anilistId, User $user): ?UserSeries
+    {
+        $series = $this->findOneSeriesByAnilistId($anilistId);
+
+        return $this->entityManager->getRepository(UserSeries::class)->findOneBy(['user' => $user, 'series' => $series]);
     }
 }

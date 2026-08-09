@@ -5,17 +5,21 @@ import { useToast } from './useToast'
 import { progressPercent, availableEpisodes } from '../utils/animeStats'
 import { t, errorMessage } from '../i18n'
 
+const STALE_STATE_ERROR_CODES = new Set(['episode_not_aired', 'series_already_completed'])
+
 export function useUserSeries() {
   const toast = useToast()
   const animeList = ref<Anime[]>([])
   const pendingEpisodeIds = ref<Set<number>>(new Set())
+  const justCompletedAnime = ref<{ id: number; title: string } | null>(null)
+  const listLoaded = ref(false)
   let listAbortController: AbortController | null = null
 
   async function fetchUserSeries() {
     listAbortController?.abort()
     listAbortController = new AbortController()
     try {
-      const response = await fetch('/api/series/getUserSeries', { credentials: 'include', signal: listAbortController.signal })
+      const response = await fetch('/api/series/getUserSeries', { credentials: 'include', cache: 'no-store', signal: listAbortController.signal })
       if (!response.ok) {
         toast.error(t('toast.seriesLoadError'))
         return
@@ -38,9 +42,10 @@ export function useUserSeries() {
           isAdult: userSeries.series.isAdult,
           favorite: userSeries.isFavourite,
           dayOfWeek: userSeries.series.airingDay,
-          genre: userSeries.series.genres.join(', '),
+          genres: userSeries.series.genres,
           isCompleted: userSeries.isCompleted,
           isRewatching: userSeries.isRewatching,
+          score: userSeries.score,
           season: userSeries.series.season ?? '',
           format: userSeries.series.format,
           source: userSeries.series.source || null,
@@ -48,6 +53,7 @@ export function useUserSeries() {
           isTracked: true,
         }
       })
+      listLoaded.value = true
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
       toast.error(t('toast.seriesLoadError'))
@@ -67,6 +73,7 @@ export function useUserSeries() {
       if (!response.ok) {
         const data = await response.json() as ApiError
         toast.error(errorMessage(data.errorCode))
+        if (STALE_STATE_ERROR_CODES.has(data.errorCode)) await fetchUserSeries()
         return
       }
       const data = await response.json() as { lastEpisodeWatched: number; countEpisodesCompleted: number; isCompleted: boolean; isRewatching: boolean; justCompleted: boolean; rewatchFinished: boolean }
@@ -81,6 +88,7 @@ export function useUserSeries() {
         toast.success(t('toast.rewatchFinished'))
       } else if (data.justCompleted) {
         toast.success(anime.format === 'MOVIE' ? t('toast.movieFinished') : t('toast.seriesFinished'))
+        justCompletedAnime.value = { id: anime.id, title: anime.title }
       } else {
         toast.success(t('toast.episodeAdded'))
       }
@@ -111,6 +119,11 @@ export function useUserSeries() {
     if (anime) anime.favorite = isFavourite
   }
 
+  function applyScore(id: number, score: number) {
+    const anime = animeList.value.find(anime => anime.id === id)
+    if (anime) anime.score = score
+  }
+
   function markRewatch(id: number) {
     const anime = animeList.value.find(a => a.id === id)
     if (anime) {
@@ -133,5 +146,5 @@ export function useUserSeries() {
     animeList.value = []
   }
 
-  return {animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes}
+  return {animeList, listLoaded, pendingEpisodeIds, justCompletedAnime, fetchUserSeries, addEpisode, deleteAnime, setFavorite, applyScore, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes}
 }

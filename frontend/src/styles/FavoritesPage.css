@@ -1,3 +1,5 @@
+@import "./Menu.css";
+
 .favs {
   flex: 1;
   padding-bottom: calc(var(--nav-h) + 16px);
@@ -27,95 +29,6 @@
 
 .menu-wrap {
   position: relative;
-}
-
-.menu-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 130px;
-  background: transparent;
-  border: 0;
-  color: var(--text-2);
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-
-.menu-btn:hover:not(:disabled),
-.menu-btn.active {
-  color: var(--text);
-}
-
-.menu-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.menu-btn svg {
-  width: 14px;
-  height: 14px;
-  flex-shrink: 0;
-}
-
-.menu-btn span {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.menu-list {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 170px;
-  max-height: 280px;
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--border-md, var(--surface-2));
-  border-radius: 10px;
-  padding: 4px;
-  z-index: 30;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
-}
-
-.menu-item {
-  width: 100%;
-  text-align: left;
-  background: transparent;
-  border: 0;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-2);
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.menu-item:hover {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.menu-item.active {
-  color: var(--text);
-  background: var(--surface-2);
-}
-
-.menu-divider {
-  height: 1px;
-  background: var(--border-md, var(--surface-2));
-  margin: 4px 6px;
-}
-
-.menu-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
 }
 
 .grid {
@@ -179,6 +92,29 @@
 .done-badge {
   background: rgba(0, 0, 0, 0.45);
   color: rgba(255,255,255,0.7);
+}
+
+.score-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(11, 11, 14, 0.55);
+  border: 1px solid rgba(176, 164, 122, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.score-badge svg {
+  width: 11px;
+  height: 11px;
 }
 
 .tile-title {

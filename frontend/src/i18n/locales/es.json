@@ -11,10 +11,19 @@
   },
   "common": {
     "recapCta": "Ver tu recap del año",
+    "importCta": "Importa tu lista de AniList",
     "completed": "Completado",
     "back": "Volver",
     "save": "Guardar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "sortAria": "Ordenar",
+    "sort": {
+      "default": "Por defecto",
+      "alpha": "Alfabético",
+      "progress": "Progreso",
+      "pending": "Pendientes",
+      "score": "Puntuación"
+    }
   },
   "adultGate": {
     "title": "Contenido para adultos",
@@ -54,13 +63,7 @@
     "title": "Favoritos",
     "filterGenreAria": "Filtrar por género",
     "genreDefault": "Género",
-    "sortAria": "Ordenar",
     "all": "Todos",
-    "sort": {
-      "default": "Por defecto",
-      "alpha": "Alfabético",
-      "progress": "Progreso"
-    },
     "noMatches": "Sin coincidencias",
     "tryAnotherFilter": "Pruebe con otro filtro",
     "emptyTitle": "Aún no tienes favoritos",
@@ -87,7 +90,8 @@
     "editAiredEpisode": "EDITAR EPISODIO EMITIDO",
     "airedEpisodeLabel": "Último episodio emitido",
     "markFinished": "Serie finalizada",
-    "info": "Información"
+    "info": "Información",
+    "rate": "PUNTUAR"
   },
   "login": {
     "subCreate": "Crea tu cuenta",
@@ -122,12 +126,16 @@
       "series": "SERIES",
       "favorites": "FAVORITOS",
       "daysWatched": "DÍAS VISTOS",
-      "airing": "EN EMISIÓN",
+      "averageScore": "NOTA MEDIA",
       "completed": "COMPLETADAS"
     },
     "topGenres": "GÉNEROS MÁS CONSUMIDOS",
     "recentActivity": "ACTIVIDAD RECIENTE",
-    "noActivity": "Sin actividad reciente",
+    "noActivity": "Sin actividad en los últimos {days} días",
+    "prevActivityAria": "Anterior",
+    "nextActivityAria": "Siguiente",
+    "data": "DATOS",
+    "importAnilist": "Importar desde AniList",
     "account": "CUENTA",
     "changePassword": "Cambiar contraseña",
     "privacyPolicy": "Política de privacidad",
@@ -162,9 +170,10 @@
     "closeAria": "Cerrar",
     "introTagline": "Bienvenido a tu anirecap",
     "introHint": "Toca para empezar",
-    "topSeasonLabel": "Tu temporada con mayor actividad ha sido",
+    "topSeasonLabel": "Tu temporada favorita ha sido",
     "seasonTotal": "con un total de {count} series",
     "someSeries": "Algunas de las series que viste",
+    "allSeries": "Todas las series que viste",
     "firstLastLabel": "Primera y última serie",
     "firstLastTitle": "Inicio y final",
     "tagFirst": "Primera",
@@ -177,13 +186,21 @@
     "inNumbers": "En cifras",
     "seriesCompleted": "series completadas",
     "ofAnime": "de anime",
-    "ratio": "De las {added} series que empezaste este año, terminaste {completed} — un {percent} de finalización.",
     "preferences": "Tus preferencias",
-    "byFormat": "Por formato",
     "favGenres": "Géneros favoritos",
+    "genreSeries": "series",
+    "genreEpisodes": "capítulos",
     "slideAria": "Diapositiva {n}",
     "prevAria": "Anterior",
-    "nextAria": "Siguiente"
+    "nextAria": "Siguiente",
+    "scoresLabel": "Tus notas",
+    "scoresTitle": "El podio del año",
+    "averageLabel": "Nota media",
+    "disappointmentLabel": "La decepción",
+    "cardTitle": "Recap",
+    "factGenre": "Género favorito",
+    "factSeason": "Temporada favorita",
+    "downloadAria": "Descargar tu recap"
   },
   "contact": {
     "backAria": "Volver",
@@ -284,12 +301,31 @@
     "recapNeed8": "Se necesitan 8 series para poder crear tu recap",
     "passwordsDontMatch": "Las contraseñas no coinciden",
     "passwordTooShort": "La contraseña debe tener mínimo 8 caracteres",
-    "fillAllFields": "Por favor completa todos los campos"
+    "fillAllFields": "Por favor completa todos los campos",
+    "scoreSaved": "Puntuación guardada",
+    "recapDownloadError": "No se pudo generar la imagen"
+  },
+  "import": {
+    "title": "Importar desde AniList",
+    "lede": "Traemos las series que tengas como viendo, completadas o revisionando. Tu lista de AniList tiene que ser pública.",
+    "userLabel": "Usuario de AniList",
+    "userPlaceholder": "Tu nombre de usuario",
+    "submit": "Importar",
+    "importing": "Importando",
+    "wait": "Esto puede tardar un poco si tu lista es larga. No cierres esta pantalla.",
+    "resultTitle": "Resultado",
+    "statCreated": "series añadidas",
+    "statExisted": "ya estaban en tu lista",
+    "statProcessed": "entradas revisadas",
+    "skippedTitle": "Sin añadir porque aún no se han estrenado ({count}):"
   },
   "errors": {
     "unknown": "Ha ocurrido un error inesperado",
+    "anilist_user_not_found": "No encontramos ese usuario en AniList",
+    "anilist_list_private": "Esa lista de AniList es privada",
     "series_not_found": "No se encontró el anime",
     "series_not_in_list": "No tienes esta serie en tu lista",
+    "series_already_in_list": "Ya tienes esta serie en tu lista",
     "series_already_completed": "Esta serie ya está completa",
     "series_not_completed": "Solo puedes volver a ver series completadas",
     "series_not_adult": "Solo se pueden actualizar capítulos de series adultas",
@@ -311,6 +347,7 @@
     "addedPrefix": "Has añadido ",
     "addedSuffix": " a tu lista",
     "finishedPrefix": "Has terminado ",
+    "rewatchPrefix": "Has vuelto a empezar ",
     "watchedPrefix": "Has visto el capítulo {count} de "
   },
   "time": {
@@ -376,6 +413,38 @@
       "Thriller": "Suspense",
       "Mahou Shoujo": "Chicas mágicas",
       "Supernatural": "Sobrenatural"
+    }
+  },
+  "score": {
+    "label": "Puntuación (1-10)",
+    "title": "Valora {title}"
+  },
+  "whatsNew": {
+    "title": "Novedades",
+    "gotIt": "Entendido",
+    "score": {
+      "name": "Puntúa tus series",
+      "desc": "Del 1 al 10 al terminar una serie, o cuando quieras desde su detalle."
+    },
+    "rewatch": {
+      "name": "Vuelve a ver una serie",
+      "desc": "Empieza de cero sin perder los capítulos que ya tenías contados."
+    },
+    "recap": {
+      "name": "Recap renovado",
+      "desc": "Mejoras visuales y nuevo botón descargar"
+    },
+    "activity": {
+      "name": "Actividad de 90 días",
+      "desc": "Ahora puedes recorrer tu actividad reciente durante los últimos 90 dias."
+    },
+    "sort": {
+      "name": "Ordena tu lista",
+      "desc": "Alfabéticamente o por capítulos pendientes, desde el home."
+    },
+    "import": {
+      "name": "Importa tu lista de AniList",
+      "desc": "Trae lo que tenías allí: progreso, notas y series completadas."
     }
   }
 }

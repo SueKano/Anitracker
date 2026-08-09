@@ -7,6 +7,7 @@ enum ErrorCode: string
     // Series
     case SERIES_NOT_FOUND = 'series_not_found';
     case SERIES_NOT_IN_LIST = 'series_not_in_list';
+    case SERIES_ALREADY_IN_LIST = 'series_already_in_list';
     case SERIES_ALREADY_COMPLETED = 'series_already_completed';
     case SERIES_NOT_COMPLETED = 'series_not_completed';
     case SERIES_NOT_ADULT = 'series_not_adult';
@@ -15,6 +16,10 @@ enum ErrorCode: string
     case EPISODE_NOT_AIRED = 'episode_not_aired';
     case EPISODE_VERIFICATION_FAILED = 'episode_verification_failed';
     case INVALID_VALUE = 'invalid_value';
+
+    // Import de listas
+    case ANILIST_USER_NOT_FOUND = 'anilist_user_not_found';
+    case ANILIST_LIST_PRIVATE = 'anilist_list_private';
 
     // Rate limiting / abuso
     case RATE_LIMITED = 'rate_limited';

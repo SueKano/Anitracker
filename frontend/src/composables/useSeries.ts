@@ -22,6 +22,7 @@ export function useSeries() {
         favorite: data.tracking?.isFavourite ?? false,
         isCompleted: data.tracking?.isCompleted ?? false,
         isRewatching: data.tracking?.isRewatching ?? false,
+        score: data.tracking?.score ?? 0,
         isTracked: data.tracking !== null,
       }
     } catch {
@@ -92,6 +93,27 @@ export function useSeries() {
     }
   }
 
+  async function setScore(anilistId: number, score: number): Promise<boolean> {
+    try {
+      const response = await fetch('/api/series/score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anilistId, score }),
+        credentials: 'include'
+      })
+      if (!response.ok) {
+        const data = await response.json() as ApiError
+        toast.error(errorMessage(data.errorCode))
+        return false
+      }
+      toast.success(t('toast.scoreSaved'))
+      return true
+    } catch {
+      toast.error(t('toast.connectionError'))
+      return false
+    }
+  }
+
   async function updateAdultEpisode(anilistId: number, currentAiringEpisode: number, isFinished: boolean): Promise<boolean> {
     try {
       const response = await fetch('/api/series/updateEpisodeToAdultSeries', {
@@ -114,5 +136,5 @@ export function useSeries() {
     }
   }
 
-  return { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, updateAdultEpisode }
+  return { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, setScore, updateAdultEpisode }
 }

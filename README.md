@@ -4,7 +4,7 @@
 
 **A fast, no-friction anime tracker — log the episode you just watched with one tap.**
 
-[**Live app → myanitracker.com**](https://www.myanitracker.com) · Free · Open source
+[**Live app → myanitracker.com**](https://myanitracker.com) · Free · Open source
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-b0a47a.svg)](LICENSE)
 

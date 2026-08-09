@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ListFilter, ArrowDownUp, Heart } from 'lucide-vue-next'
+import { ListFilter, ArrowDownUp, Heart, Star } from 'lucide-vue-next'
 import { progressPercent } from '../utils/animeStats'
 import type { Anime } from '../types/Anime'
 import {translateDay, translateGenre} from "../utils/translateLabels.ts";
@@ -10,7 +10,7 @@ const props = defineProps<{ animeList: Anime[] }>()
 const emit = defineEmits<{ select: [id: number] }>()
 const { t } = useI18n()
 
-type SortKey = 'default' | 'alpha' | 'progress'
+type SortKey = 'default' | 'alpha' | 'progress' | 'score'
 type MenuKey = 'genre' | 'sort'
 
 const genreFilter = ref<string | null>(null)
@@ -19,12 +19,10 @@ const openMenu = ref<MenuKey | null>(null)
 
 const baseFavorites = computed(() =>
   props.animeList
-    .filter(anime => anime.favorite)
-    .map(anime => ({
+    .filter(anime => anime.favorite).map(anime => ({
       ...anime,
-      genres: anime.genre ? anime.genre.split(', ') : [],
       percent: progressPercent(anime),
-      done: anime.progress >= anime.total,
+      done: anime.total > 0 && anime.progress >= anime.total,
     }))
 )
 
@@ -51,6 +49,7 @@ const favorites = computed(() => {
   const sorted = [...list]
   if (sortKey.value === 'alpha') sorted.sort((first, second) => first.title.localeCompare(second.title))
   else if (sortKey.value === 'progress') sorted.sort((first, second) => second.percent - first.percent)
+  else if (sortKey.value === 'score') sorted.sort((first, second) => second.score - first.score || first.title.localeCompare(second.title))
 
   return sorted
 })
@@ -73,9 +72,10 @@ const sortOptions: { key: SortKey }[] = [
   { key: 'default' },
   { key: 'alpha' },
   { key: 'progress' },
+  { key: 'score' },
 ]
 
-const currentSortLabel = computed(() => t('favorites.sort.' + sortKey.value))
+const currentSortLabel = computed(() => t('common.sort.' + sortKey.value))
 const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genreFilter.value) : t('favorites.genreDefault'))
 </script>
 
@@ -103,7 +103,7 @@ const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genr
         </div>
 
         <div class="menu-wrap">
-          <button class="menu-btn" :class="{ active: openMenu === 'sort' }" @click="toggleMenu('sort')" :aria-label="t('favorites.sortAria')">
+          <button class="menu-btn" :class="{ active: openMenu === 'sort' }" @click="toggleMenu('sort')" :aria-label="t('common.sortAria')">
             <ArrowDownUp :stroke-width="1.8" />
             <span>{{ currentSortLabel }}</span>
           </button>
@@ -111,7 +111,7 @@ const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genr
             <div v-if="openMenu === 'sort'" class="menu-list">
               <button v-for="option in sortOptions" :key="option.key" class="menu-item" :class="{ active: sortKey === option.key }"
                       @click="selectSort(option.key)">
-                {{ t('favorites.sort.' + option.key) }}
+                {{ t('common.sort.' + option.key) }}
               </button>
             </div>
           </Transition>
@@ -123,6 +123,10 @@ const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genr
       <div v-for="anime in favorites" :key="anime.id" class="tile" @click="emit('select', anime.id)">
         <div class="tile-cover">
           <img :src="anime.cover" :alt="anime.title" loading="lazy" />
+          <span v-if="anime.score > 0" class="score-badge">
+            <Star fill="currentColor" :stroke-width="0" />
+            {{ anime.score }}
+          </span>
           <span v-if="anime.done" class="done-badge">{{ t('common.completed') }}</span>
           <span v-else-if="anime.airing && !anime.isAdult" class="airing-badge"><i />{{ translateDay(anime.dayOfWeek) }}</span>
         </div>

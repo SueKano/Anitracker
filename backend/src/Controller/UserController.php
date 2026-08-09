@@ -4,7 +4,10 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Enum\ErrorCode;
-use App\Entity\UserSeries;
+use App\Exception\AnilistUnavailableException;
+use App\Exception\ApiException;
+use App\Repository\UserSeriesRepository;
+use App\Services\AnilistImporterUserList;
 use Doctrine\ORM\EntityManagerInterface;
 use KnpU\OAuth2ClientBundle\Client\ClientRegistry;
 use League\Flysystem\FilesystemOperator;
@@ -28,10 +31,12 @@ class UserController extends AbstractController
 {
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly UserPasswordHasherInterface $passwordHasher,
                                 private readonly ClientRegistry $clientRegistry, private readonly ValidatorInterface $validator,
-                                private readonly TokenStorageInterface  $tokenStorage,
+                                private readonly TokenStorageInterface $tokenStorage, private readonly UserSeriesRepository $userSeriesRepository,
                                 #[Target('registrationLimiter')] private readonly RateLimiterFactoryInterface $registrationLimiter,
                                 #[Target('passwordChangeLimiter')] private readonly RateLimiterFactoryInterface $passwordChangeLimiter,
-                                #[Target('updateUserLimiter')] private readonly RateLimiterFactoryInterface $updateUserLimiter)
+                                #[Target('updateUserLimiter')] private readonly RateLimiterFactoryInterface $updateUserLimiter,
+                                #[Target('anilistImportLimiter')] private readonly RateLimiterFactoryInterface $anilistImportLimiter,
+                                private readonly AnilistImporterUserList $anilistImporter)
     {
     }
 
@@ -151,9 +156,10 @@ class UserController extends AbstractController
     #[Route('/api/user/getLastUpdates', name: 'get_last_updates', methods: ['GET'])]
     public function getLastUpdatesByUser(#[CurrentUser] User $user): Response
     {
-        $lastUpdates = $this->entityManager->getRepository(UserSeries::class)->findByUser($user, ['updatedAt' => 'DESC'], 5);
+        $lastUpdates = $this->userSeriesRepository->findRecentActivityByUser($user);
 
-        return $this->json(['lastUpdates' => $lastUpdates], Response::HTTP_OK, [], ['groups' => ['userProfile:series']]);
+        return $this->json(['lastUpdates' => $lastUpdates, 'activityWindowDays' => UserSeriesRepository::ACTIVITY_WINDOW_DAYS],
+            Response::HTTP_OK, [], ['groups' => ['userProfile:series']]);
     }
 
     #[Route('/api/auth/google', name: 'handle_google_login_start', methods: ['GET'])]
@@ -166,6 +172,25 @@ class UserController extends AbstractController
     public function handleGoogleLogin(): Response
     {
         throw new \LogicException('Este endpoint lo maneja el firewall de Symfony.');
+    }
+
+    #[Route('/api/user/import/anilist', name: 'import_anilist', methods: ['POST'])]
+    public function importUserAnilist(Request $request, #[CurrentUser] User $user): Response
+    {
+        $data = json_decode($request->getContent(), true);
+        $userName = (trim($data['userName'] ?? ''));
+        if ($userName === '') {
+            throw new ApiException(ErrorCode::MISSING_FIELDS);
+        }
+        if (!$this->anilistImportLimiter->create($user->getUserIdentifier())->consume()->isAccepted()) {
+            throw new ApiException(ErrorCode::RATE_LIMITED, Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
+        try {
+            return $this->json($this->anilistImporter->importFromAnilist($user, $userName));
+        } catch (AnilistUnavailableException) {
+            throw new ApiException(ErrorCode::SERIES_LOOKUP_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
+        }
     }
 
     private function validatePlainPasswordLength(string $plainPassword): ?JsonResponse

@@ -3,6 +3,7 @@ export type LastUpdate = {
   title: string
   cover: string
   isCompleted: boolean
+  isRewatching: boolean
   progress: number
 }
 
@@ -12,6 +13,7 @@ export type LastUpdateView = LastUpdate & {
 }
 
 export type LastUpdateResponse = {
+  activityWindowDays: number
   lastUpdates?: Array<{
     series: {
       anilistId: number
@@ -19,6 +21,7 @@ export type LastUpdateResponse = {
       portraitUrl: string
     }
     isCompleted: boolean
+    isRewatching: boolean
     lastEpisodeWatchedCount: number
   }>
 }
