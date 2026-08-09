@@ -308,6 +308,51 @@
   color: var(--accent);
 }
 
+.activity-rows {
+  min-height: 374px;
+}
+
+.activity-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.pager-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  background: none;
+  border: 0;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: color 0.15s, opacity 0.15s;
+}
+
+.pager-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.pager-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.pager-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.pager-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
 .activity-empty {
   padding: 20px 16px;
   border: 1px solid var(--border-md);

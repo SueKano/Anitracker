@@ -19,7 +19,6 @@ readonly class RecapBuilder
             return null;
         }
         $totalWorksCompleted = $this->getCompletedWorksByFormat($seriesCompleted);
-        $countAddedWorks = $this->userSeriesRepository->countAddedByUserAndYear($user, $year);
         $totalEpisodesCompletedYear = $this->episodeWatchRepository->getCompletedEpisodesByUserAndYear($user, $year);
         $mostWatchedGenres = $this->getMostWatchedGenresByUser($seriesCompleted);
         $firstAndLastWatchedPlay = $this->getFirstAndLastCompletedPlayByUser($seriesCompleted);
@@ -29,23 +28,24 @@ readonly class RecapBuilder
         $seriesIds = array_map(fn($userSeries) => $userSeries->getSeries()->getId(), $seriesCompleted);
         $firstWatchMap = $this->episodeWatchRepository->findFirstWatchPerSeries($user, $seriesIds);
         $fastestSeries = $this->getFastestWatchOfSeries($seriesCompleted, $firstWatchMap);
+        $scoreSeries = $this->getScoresOfSeries($seriesCompleted);
 
         return [
-            'year'             => $year,
-            'worksCompleted'   => [
-                'total'    => array_sum($totalWorksCompleted),
-                'formats'  => $totalWorksCompleted,
+            'year' => $year,
+            'worksCompleted' => [
+                'total' => array_sum($totalWorksCompleted),
+                'formats' => $totalWorksCompleted,
             ],
-            'worksAdded'        => $countAddedWorks,
-            'episodesWatched'   => $totalEpisodesCompletedYear,
-            'topGenres'         => array_slice($mostWatchedGenres, 0, 5, true),
-            'topSeason'         => $worksWatchedBySeason['season'],
-            'topSeriesSeason'   => $worksWatchedBySeason['seriesSeason'],
+            'episodesWatched' => $totalEpisodesCompletedYear,
+            'topGenres' => $mostWatchedGenres,
+            'topSeason' => $worksWatchedBySeason['season'],
+            'topSeriesSeason' => $worksWatchedBySeason['seriesSeason'],
             'totalSeriesSeason' => $worksWatchedBySeason['totalSeriesSeason'],
-            'firstWatched'      => $firstAndLastWatchedPlay['firstSeries'],
-            'lastWatched'       => $firstAndLastWatchedPlay['lastSeries'],
-            'slowestSeries'     => $laziestSeries,
-            'fastestSeries'     => $fastestSeries,
+            'firstWatched' => $firstAndLastWatchedPlay['firstSeries'],
+            'lastWatched' => $firstAndLastWatchedPlay['lastSeries'],
+            'slowestSeries' => $laziestSeries,
+            'fastestSeries' => $fastestSeries,
+            'scoreSeries' => $scoreSeries,
         ];
     }
 
@@ -61,12 +61,29 @@ readonly class RecapBuilder
 
     private function getMostWatchedGenresByUser(array $userSeriesData): array
     {
-        $seriesGenres = array_map(fn($us) => $us->getSeries()->getGenres(), $userSeriesData);
-        $allGenres = array_merge(... $seriesGenres);
-        $countGenres = array_count_values($allGenres);
-        arsort($countGenres);
+        $seriesByGenre = [];
+        foreach ($userSeriesData as $userSeries) {
+            foreach ($userSeries->getSeries()->getGenres() as $genre) {
+                $seriesByGenre[$genre][] = $userSeries;
+            }
+        }
+        uasort($seriesByGenre, static fn(array $first, array $second) => count($second) <=> count($first));
 
-        return $countGenres;
+        $topGenres = [];
+        foreach (array_slice($seriesByGenre, 0, 3, true) as $genre => $genreSeries) {
+            $topGenres[] = $this->buildGenreSummary($genre, $genreSeries);
+        }
+
+        return $topGenres;
+    }
+
+    private function buildGenreSummary(string $genre, array $genreSeries): array
+    {
+        $episodes = array_map(fn($userSeries) => $userSeries->getSeries()->getTotalEpisodes(), $genreSeries);
+        usort($genreSeries, static fn($first, $second) => $second->getScore() <=> $first->getScore());
+        $portraits = array_map(fn($userSeries) => $userSeries->getSeries()->getPortraitUrl(), array_slice($genreSeries, 0, 3));
+
+        return ['name' => $genre, 'seriesCount' => count($genreSeries), 'episodes' => array_sum($episodes), 'portraits' => $portraits];
     }
 
     private function getFirstAndLastCompletedPlayByUser(array $userSeriesData): array
@@ -85,7 +102,8 @@ readonly class RecapBuilder
         arsort($mostWatchedSeriesBySeason);
         $mostWatchedSeason = array_key_first($mostWatchedSeriesBySeason);
         $totalSeriesSeason = array_filter($userSeriesData, fn($us) => $us->getSeries()->getSeason() === $mostWatchedSeason);
-        $seriesSeason = array_slice($totalSeriesSeason, 0, 3);
+        usort($totalSeriesSeason, static fn($first, $second) => $second->getScore() <=> $first->getScore());
+        $seriesSeason = array_slice($totalSeriesSeason, 0, 6);
 
         return ['season' => $mostWatchedSeason, 'seriesSeason' => $seriesSeason, 'totalSeriesSeason' => count($totalSeriesSeason)];
     }
@@ -123,5 +141,17 @@ readonly class RecapBuilder
         }
 
         return ['userSeries' => $fastestSeries, 'duration' => $fastestSeconds];
+    }
+    private function getScoresOfSeries(array $userSeriesData): ?array
+    {
+        $scoredSeries = array_filter($userSeriesData, fn($userSeries) => $userSeries->getScore() > 0);
+        if (count($scoredSeries) < 4){
+            return null;
+        }
+        usort($scoredSeries, fn($first, $second) => $second->getScore() <=> $first->getScore());
+        $scores = array_map(fn($userSeries) => $userSeries->getScore(), $scoredSeries);
+
+        return ['top' => array_slice($scoredSeries, 0, 3), 'average' => round(array_sum($scores) / count($scores), 1),
+            'disappointment' => end($scoredSeries)];
     }
 }

@@ -20,10 +20,8 @@ export const translateDayAbbr = (value: string | null | undefined) =>
 export const translateGenre = (value: string | null | undefined): string =>
   label('genres', value?.trim())
 
-export const translateGenres = (value: string | null | undefined): string => {
-  if (!value) return ''
-  return value.split(',').map(genre => translateGenre(genre.trim())).join(', ')
-}
+export const translateGenres = (genres: string[]): string =>
+  genres.map(genre => translateGenre(genre)).join(', ')
 
 export type AiringStatus = 'upcoming' | 'airing' | 'finished'
 export function resolveAiringStatus(anime: { airingStatus: string; airing: boolean }): AiringStatus {

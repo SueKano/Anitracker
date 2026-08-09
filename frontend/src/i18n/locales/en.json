@@ -11,10 +11,19 @@
   },
   "common": {
     "recapCta": "See your year recap",
+    "importCta": "Import your AniList list",
     "completed": "Completed",
     "back": "Back",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "sortAria": "Sort",
+    "sort": {
+      "default": "Default",
+      "alpha": "Alphabetical",
+      "progress": "Progress",
+      "pending": "Pending",
+      "score": "Score"
+    }
   },
   "adultGate": {
     "title": "Adult content",
@@ -54,13 +63,7 @@
     "title": "Favorites",
     "filterGenreAria": "Filter by genre",
     "genreDefault": "Genre",
-    "sortAria": "Sort",
     "all": "All",
-    "sort": {
-      "default": "Default",
-      "alpha": "Alphabetical",
-      "progress": "Progress"
-    },
     "noMatches": "No matches",
     "tryAnotherFilter": "Try a different filter",
     "emptyTitle": "You have no favorites yet",
@@ -87,7 +90,8 @@
     "editAiredEpisode": "EDIT AIRED EPISODE",
     "airedEpisodeLabel": "Last aired episode",
     "markFinished": "Series finished",
-    "info": "Information"
+    "info": "Information",
+    "rate": "RATE"
   },
   "login": {
     "subCreate": "Create your account",
@@ -122,12 +126,16 @@
       "series": "SERIES",
       "favorites": "FAVORITES",
       "daysWatched": "DAYS WATCHED",
-      "airing": "AIRING",
+      "averageScore": "AVERAGE SCORE",
       "completed": "COMPLETED"
     },
     "topGenres": "MOST WATCHED GENRES",
     "recentActivity": "RECENT ACTIVITY",
-    "noActivity": "No recent activity",
+    "noActivity": "No activity in the last {days} days",
+    "prevActivityAria": "Previous",
+    "nextActivityAria": "Next",
+    "data": "DATA",
+    "importAnilist": "Import from AniList",
     "account": "ACCOUNT",
     "changePassword": "Change password",
     "privacyPolicy": "Privacy policy",
@@ -162,9 +170,10 @@
     "closeAria": "Close",
     "introTagline": "Welcome to your anirecap",
     "introHint": "Tap to start",
-    "topSeasonLabel": "Your most active season was",
+    "topSeasonLabel": "Your favorite season was",
     "seasonTotal": "with a total of {count} series",
     "someSeries": "Some of the series you watched",
+    "allSeries": "All the series you watched",
     "firstLastLabel": "First and last series",
     "firstLastTitle": "Start and finish",
     "tagFirst": "First",
@@ -177,13 +186,21 @@
     "inNumbers": "In numbers",
     "seriesCompleted": "series completed",
     "ofAnime": "of anime",
-    "ratio": "Of the {added} series you started this year, you finished {completed} — a {percent} completion rate.",
     "preferences": "Your preferences",
-    "byFormat": "By format",
     "favGenres": "Favorite genres",
+    "genreSeries": "series",
+    "genreEpisodes": "episodes",
     "slideAria": "Slide {n}",
     "prevAria": "Previous",
-    "nextAria": "Next"
+    "nextAria": "Next",
+    "scoresLabel": "Your scores",
+    "scoresTitle": "Podium of the year",
+    "averageLabel": "Average score",
+    "disappointmentLabel": "The letdown",
+    "cardTitle": "My year in anime",
+    "factGenre": "Favorite genre",
+    "factSeason": "Favorite season",
+    "downloadAria": "Download your recap"
   },
   "contact": {
     "backAria": "Back",
@@ -284,12 +301,31 @@
     "recapNeed8": "You need 8 series to create your recap",
     "passwordsDontMatch": "Passwords do not match",
     "passwordTooShort": "The password must be at least 8 characters",
-    "fillAllFields": "Please fill in all fields"
+    "fillAllFields": "Please fill in all fields",
+    "scoreSaved": "Score saved",
+    "recapDownloadError": "Couldn't generate the image"
+  },
+  "import": {
+    "title": "Import from AniList",
+    "lede": "We'll bring over the series you have as watching, completed or rewatching. Your AniList list must be public.",
+    "userLabel": "AniList username",
+    "userPlaceholder": "Your username",
+    "submit": "Import",
+    "importing": "Importing",
+    "wait": "This may take a while if your list is long. Don't close this screen.",
+    "resultTitle": "Result",
+    "statCreated": "series added",
+    "statExisted": "already in your list",
+    "statProcessed": "entries checked",
+    "skippedTitle": "Not added because they haven't aired yet ({count}):"
   },
   "errors": {
     "unknown": "An unexpected error occurred",
+    "anilist_user_not_found": "We couldn't find that AniList user",
+    "anilist_list_private": "That AniList list is private",
     "series_not_found": "Anime not found",
     "series_not_in_list": "This series isn't in your list",
+    "series_already_in_list": "This series is already in your list",
     "series_already_completed": "This series is already complete",
     "series_not_completed": "You can only rewatch completed series",
     "series_not_adult": "Only adult series episodes can be updated",
@@ -311,6 +347,7 @@
     "addedPrefix": "You added ",
     "addedSuffix": " to your list",
     "finishedPrefix": "You finished ",
+    "rewatchPrefix": "You restarted ",
     "watchedPrefix": "You watched episode {count} of "
   },
   "time": {
@@ -365,6 +402,38 @@
     },
     "genres": {
       "Mahou Shoujo": "Magical Girls"
+    }
+  },
+  "score": {
+    "label": "Score (1-10)",
+    "title": "Rate {title}"
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "gotIt": "Got it",
+    "score": {
+      "name": "Rate your series",
+      "desc": "From 1 to 10 when you finish a series, or whenever you want from its detail."
+    },
+    "rewatch": {
+      "name": "Rewatch a series",
+      "desc": "Start from scratch without losing the episodes you already had counted."
+    },
+    "recap": {
+      "name": "Revamped recap",
+      "desc": "Visual improvements and a new download button"
+    },
+    "activity": {
+      "name": "90 days of activity",
+      "desc": "Now you can browse your recent activity over the last 90 days."
+    },
+    "sort": {
+      "name": "Sort your list",
+      "desc": "Alphabetically or by pending episodes, from the home."
+    },
+    "import": {
+      "name": "Import your AniList list",
+      "desc": "Bring over what you already had there: progress, scores and completed series."
     }
   }
 }

@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Heart, Pencil, RotateCcw } from 'lucide-vue-next'
+import { Heart, Pencil, RotateCcw, Star } from 'lucide-vue-next'
+import ScoreModal from './ScoreModal.vue'
 import { useSeries } from '../composables/useSeries'
 import {translateSeason, translateFormat, translateSource, translateDay, translateGenres, resolveAiringStatus} from '../utils/translateLabels.ts'
 import { progressPercent as computeProgressPercent, episodesBehind } from '../utils/animeStats'
 import type { Anime } from '../types/Anime'
 
 const props = defineProps<{ anime: Anime; isNew?: boolean; isAdmin?: boolean }>()
-const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], rewatchStarted: [id: number], adultEpisodeChanged: [id: number, aired: number, airingStatus: string] }>()
+const emit = defineEmits<{ close: [], goToHome: [], favoriteChanged: [id: number, isFavourite: boolean], rewatchStarted: [id: number], scoreChanged: [id: number, score: number], adultEpisodeChanged: [id: number, aired: number, airingStatus: string] }>()
 
-const { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, updateAdultEpisode } = useSeries()
+const { fetchAnilistDetails, createUserSeries, toggleFavourite, rewatch, setScore, updateAdultEpisode } = useSeries()
 const { t } = useI18n()
 
 const details = ref<Anime>({ ...props.anime })
@@ -21,8 +22,14 @@ watch(() => props.anime, (next) => {
 }, { deep: true })
 
 const adminEditOpen = ref(false)
+const scoreEditOpen = ref(false)
 const adminEpisodeInput = ref(1)
 const adminFinishedInput = ref(false)
+
+const progressPercent = computed(() => computeProgressPercent(details.value))
+const behind = computed(() => episodesBehind(details.value))
+const canScore = computed(() => details.value.isCompleted && !details.value.isRewatching)
+const showScoreBadge = computed(() => canScore.value && details.value.score > 0)
 
 function openAdminEdit() {
   adminEpisodeInput.value = details.value.aired
@@ -43,9 +50,6 @@ async function saveAdminEdit() {
   }
 }
 
-const progressPercent = computed(() => computeProgressPercent(details.value))
-const behind = computed(() => episodesBehind(details.value))
-
 const seasonInfo = computed(() => {
   const season = details.value.season
   const year = details.value.seasonYear
@@ -58,7 +62,7 @@ const seasonInfo = computed(() => {
 const infoCells = computed(() => [
   { label: seasonInfo.value.label, value: seasonInfo.value.value },
   { label: t('detail.formatLabel'), value: translateFormat(details.value.format) },
-  { label: t('detail.genreLabel'),  value: translateGenres(details.value.genre) },
+  { label: t('detail.genreLabel'),  value: translateGenres(details.value.genres) },
   { label: t('detail.originLabel'), value: translateSource(details.value.source) || '—' },
 ])
 
@@ -86,6 +90,13 @@ async function addSeriesToFavourites() {
   emit('favoriteChanged', props.anime.id, isFavourite)
 }
 
+async function saveScore(score: number) {
+  if (!(await setScore(props.anime.id, score))) return
+  details.value.score = score
+  scoreEditOpen.value = false
+  emit('scoreChanged', props.anime.id, score)
+}
+
 async function rewatchSeries() {
   if (!(await rewatch(props.anime.id))) return
   details.value.isRewatching = true
@@ -95,21 +106,24 @@ async function rewatchSeries() {
 </script>
 
 <template>
-  <div v-if="adminEditOpen" class="admin-modal-overlay" @click.self="adminEditOpen = false">
-    <div class="admin-modal">
-      <h3 class="admin-modal-title">{{ details.title }}</h3>
-      <label class="admin-modal-label">{{ t('detail.airedEpisodeLabel') }}</label>
-      <input v-model.number="adminEpisodeInput" type="number" min="1" max="12" class="admin-modal-input" @keyup.enter="saveAdminEdit" />
-      <label class="admin-modal-check">
+  <div v-if="adminEditOpen" class="modal-overlay" @click.self="adminEditOpen = false">
+    <div class="modal">
+      <h3 class="modal-title">{{ details.title }}</h3>
+      <label class="modal-label">{{ t('detail.airedEpisodeLabel') }}</label>
+      <input v-model.number="adminEpisodeInput" type="number" min="1" max="12" class="modal-input" @keyup.enter="saveAdminEdit" />
+      <label class="modal-check">
         <input v-model="adminFinishedInput" type="checkbox" />
         {{ t('detail.markFinished') }}
       </label>
-      <div class="admin-modal-actions">
-        <button class="admin-modal-cancel" @click="adminEditOpen = false">{{ t('common.cancel') }}</button>
-        <button class="admin-modal-save" @click="saveAdminEdit">{{ t('common.save') }}</button>
+      <div class="modal-actions">
+        <button class="modal-cancel" @click="adminEditOpen = false">{{ t('common.cancel') }}</button>
+        <button class="modal-save" @click="saveAdminEdit">{{ t('common.save') }}</button>
       </div>
     </div>
   </div>
+
+  <ScoreModal v-if="scoreEditOpen" :title="details.title" :initial-score="details.score"
+              @save="saveScore" @close="scoreEditOpen = false" />
 
   <div class="detail">
     <div class="detail-header">
@@ -121,6 +135,10 @@ async function rewatchSeries() {
       </button>
       <span v-if="details.isTracked && behind > 0" class="badge-behind">
         {{ t('detail.pendingEpisodes', { count: behind }) }}
+      </span>
+      <span v-else-if="showScoreBadge" class="badge-score">
+        <Star fill="currentColor" :stroke-width="0" />
+        {{ details.score }}
       </span>
     </div>
 
@@ -162,6 +180,10 @@ async function rewatchSeries() {
         <Heart :fill="details.favorite ? 'currentColor' : 'none'" />
         {{ details.favorite ? t('detail.removeFavorite') : t('detail.addFavorite') }}
       </button>
+      <button v-if="!isNew && canScore" class="action-btn" @click="scoreEditOpen = true">
+        <Star :fill="details.score ? 'currentColor' : 'none'" :stroke-width="2" />
+        {{ t('detail.rate') }}
+      </button>
       <button v-if="!isNew && details.isCompleted && !details.isRewatching" class="action-btn" @click="rewatchSeries()">
         <RotateCcw :stroke-width="2" />
         {{ t('detail.rewatch') }}
@@ -186,4 +208,5 @@ async function rewatchSeries() {
 
 <style scoped>
 @import '../styles/AnimeDetail.css';
+@import '../styles/Modal.css';
 </style>

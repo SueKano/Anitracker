@@ -67,6 +67,12 @@ class Series extends AbstractEntity
     #[ORM\Column(type: 'json', options: ['default' => '[]'])]
     private array $synonyms = [];
 
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $tags = [];
+
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $studios = [];
+
     #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
     private ?\DateTime $lastRefreshedAt = null;
 
@@ -107,6 +113,28 @@ class Series extends AbstractEntity
     public function setLastRefreshedAt(?\DateTime $lastRefreshedAt): Series
     {
         $this->lastRefreshedAt = $lastRefreshedAt;
+        return $this;
+    }
+
+    public function getStudios(): array
+    {
+        return $this->studios;
+    }
+
+    public function setStudios(array $studios): Series
+    {
+        $this->studios = $studios;
+        return $this;
+    }
+
+    public function getTags(): array
+    {
+        return $this->tags;
+    }
+
+    public function setTags(array $tags): Series
+    {
+        $this->tags = $tags;
         return $this;
     }
 
@@ -285,6 +313,8 @@ class Series extends AbstractEntity
         $this->portraitUrl = $media['coverImage']['extraLarge'];
         $this->airingStatus = $media['status'];
         $this->genres = $media['genres'] ?? [];
+        $this->tags = $media['tags'] ?? [];
+        $this->studios = self::resolveMainStudios($media);
         $this->source = $media['source'] ?? '';
         $this->season = $media['season'] ?? null;
         $this->seasonYear = $media['seasonYear'] ?? 0;
@@ -316,6 +346,13 @@ class Series extends AbstractEntity
     public static function createSeriesFromAnilistData(array $data): self
     {
         return new self()->mapAnilistData($data);
+    }
+
+    public static function resolveMainStudios(array $data): array
+    {
+        $mainEdges = array_filter($data['studios']['edges'] ?? [], static fn (array $edge) => $edge['isMain']);
+
+        return array_values(array_map(static fn (array $edge) => $edge['node']['name'], $mainEdges));
     }
 
     public static function resolveTotalEpisodes(array $data): int

@@ -7,31 +7,45 @@ import AnimeDetail from './AnimeDetail.vue'
 import LoginPage from './LoginPage.vue'
 import UserProfilePage from './UserProfilePage.vue'
 import RecapWidget from './RecapWidget.vue'
+import ScoreModal from './ScoreModal.vue'
+import WhatsNewModal from './WhatsNewModal.vue'
+import ImportListPage from './ImportListPage.vue'
 import { useSession } from '../composables/useSession'
 import { useUserSeries } from '../composables/useUserSeries'
+import { useSeries } from '../composables/useSeries'
 import { useSeriesSearch } from '../composables/useSeriesSearch'
 import { useRecap } from '../composables/useRecap'
 import { useAdultGate } from '../composables/useAdultGate'
+import { useWhatsNew } from '../composables/useWhatsNew'
 import { useToast } from '../composables/useToast'
 import type { Anime } from '../types/Anime'
 import { translateDay, resolveAiringStatus } from '../utils/translateLabels'
-import { Search, User, MoreVertical, Trash2, Home, Calendar, Heart, Sparkles } from 'lucide-vue-next'
+import { Search, User, MoreVertical, Trash2, Home, Calendar, Heart, Sparkles, ArrowDownUp, Download } from 'lucide-vue-next'
+import { episodesBehind } from '../utils/animeStats'
 
 const { isLoggedIn, currentUsername, currentProfileImage, isAdmin, checkSession, setUser, clearSession } = useSession()
-const { animeList, pendingEpisodeIds, fetchUserSeries, addEpisode, deleteAnime, setFavorite, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
+const { animeList, listLoaded, pendingEpisodeIds, justCompletedAnime, fetchUserSeries, addEpisode, deleteAnime, setFavorite, applyScore, markRewatch, setAiredEpisode, clearList, progressPercent, availableEpisodes } = useUserSeries()
+const { setScore } = useSeries()
 const { searchQuery, searchFocused, searchResults, searchLoading, searchHasMore, searchLimited, loadMoreResults, clearSearch } = useSeriesSearch()
 const { recap, fetchRecap } = useRecap()
 const { modalOpen, ensureAdultAccess, confirmAdult, cancelAdult } = useAdultGate()
+const { whatsNewOpen, openWhatsNewIfUnseen, dismissWhatsNew } = useWhatsNew()
 const toast = useToast()
 const { t } = useI18n()
 
 const isDecember = computed(() => new Date().getMonth() === 11)
 const showRecap = ref(false)
+const importOpen = ref(false)
 
 const searchScrollEl = ref<HTMLElement | null>(null)
 const searchAtBottom = ref(false)
 
 const activeFilter = ref<'watching' | 'completed' | 'all'>('watching')
+
+type SortKey = 'default' | 'alpha' | 'pending'
+const sortOptions: SortKey[] = ['default', 'alpha', 'pending']
+const sortKey = ref<SortKey>('default')
+const sortMenuOpen = ref(false)
 const activeTab = ref<'home' | 'calendar' | 'favorites' | 'profile'>('home')
 
 const selectedAnimeId = ref<number | null>(null)
@@ -64,13 +78,18 @@ watch(activeTab, tab => {
   if (tab === 'home' && isLoggedIn.value) fetchUserSeries()
 })
 
+async function saveJustCompletedScore(score: number) {
+  const completed = justCompletedAnime.value
+  if (!completed) return
+  if (!(await setScore(completed.id, score))) return
+  applyScore(completed.id, score)
+  justCompletedAnime.value = null
+}
+
 async function openRecap() {
-  await fetchRecap(new Date().getFullYear())
-  if (!recap.value) {
-    toast.warning(t('toast.recapNeed8'))
-    return
-  }
-  showRecap.value = true
+  const result = await fetchRecap(new Date().getFullYear())
+  if (result === 'insufficient') toast.warning(t('toast.recapNeed8'))
+  if (result === 'ok') showRecap.value = true
 }
 
 const selectedAnime = computed<Anime | null>(() => {
@@ -79,11 +98,32 @@ const selectedAnime = computed<Anime | null>(() => {
   return animeList.value.find(anime => anime.id === selectedAnimeId.value) ?? null
 })
 
+const filterPredicates = {
+  watching: (anime: Anime) => !anime.isCompleted || anime.isRewatching,
+  completed: (anime: Anime) => anime.isCompleted && !anime.isRewatching,
+  all: () => true,
+}
+
 const filteredList = computed(() => {
-  if (activeFilter.value === 'all') return animeList.value
-  if (activeFilter.value === 'completed') return animeList.value.filter(anime => anime.isCompleted && !anime.isRewatching)
-  return animeList.value.filter(anime => !anime.isCompleted || anime.isRewatching)
+  const list = animeList.value.filter(filterPredicates[activeFilter.value])
+  if (sortKey.value === 'alpha') list.sort((first, second) => first.title.localeCompare(second.title))
+  else if (sortKey.value === 'pending') list.sort((first, second) => episodesBehind(second) - episodesBehind(first))
+
+  return list
 })
+
+const currentSortLabel = computed(() => t('common.sort.' + sortKey.value))
+
+function selectSort(key: SortKey) {
+  sortKey.value = key
+  sortMenuOpen.value = false
+}
+
+const filterCounts = computed(() => ({
+  watching: animeList.value.filter(filterPredicates.watching).length,
+  completed: animeList.value.filter(filterPredicates.completed).length,
+  all: animeList.value.length,
+}))
 
 function toggleMenu(id: number) { openMenuId.value = openMenuId.value === id ? null : id }
 async function selectSearchResult(result: Anime) {
@@ -119,6 +159,7 @@ function handleAddedToHome() {
 function handleLoginSuccess(username: string) {
   setUser(username)
   activeTab.value = 'home'
+  openWhatsNewIfUnseen()
 }
 
 async function handleRegisterSuccess(username: string){
@@ -153,10 +194,14 @@ onMounted(async () => {
   document.addEventListener('resume', refreshIfLoggedIn)
   window.addEventListener('focus', refreshIfLoggedIn)
   window.addEventListener('pageshow', refreshIfRestoredFromCache)
+  window.addEventListener('online', refreshIfLoggedIn)
   refreshIntervalId = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS)
 
   await checkSession()
-  if (isLoggedIn.value) await fetchUserSeries()
+  if (isLoggedIn.value) {
+    await fetchUserSeries()
+    openWhatsNewIfUnseen()
+  }
 })
 
 onUnmounted(() => {
@@ -164,6 +209,7 @@ onUnmounted(() => {
   document.removeEventListener('resume', refreshIfLoggedIn)
   window.removeEventListener('focus', refreshIfLoggedIn)
   window.removeEventListener('pageshow', refreshIfRestoredFromCache)
+  window.removeEventListener('online', refreshIfLoggedIn)
   clearInterval(refreshIntervalId)
 })
 
@@ -193,11 +239,18 @@ const filters = [
     </div>
   </div>
 
+  <WhatsNewModal v-if="whatsNewOpen" @close="dismissWhatsNew"/>
+  <ScoreModal v-if="justCompletedAnime" :title="justCompletedAnime.title" :initial-score="0"
+              @save="saveJustCompletedScore" @close="justCompletedAnime = null"/>
+
   <RecapWidget v-if="showRecap && recap" :recap="recap" @close="showRecap = false"/>
   <AnimeDetail v-if="selectedAnime" :anime="selectedAnime" :is-new="isNewAnime" :is-admin="isAdmin" @close="closeDetail"
-               @favorite-changed="setFavorite" @rewatch-started="markRewatch" @adult-episode-changed="setAiredEpisode" @goToHome="handleAddedToHome"/>
+               @favorite-changed="setFavorite" @rewatch-started="markRewatch" @score-changed="applyScore"
+               @adult-episode-changed="setAiredEpisode" @goToHome="handleAddedToHome"/>
 
-  <header v-show="activeTab === 'home'" class="header">
+  <ImportListPage v-if="activeTab === 'home' && importOpen" @back="importOpen = false" @imported="fetchUserSeries"/>
+
+  <header v-show="activeTab === 'home' && !importOpen" class="header">
     <div class="header-row">
       <span class="brand">ATRK</span>
       <div class="search-wrap">
@@ -236,9 +289,29 @@ const filters = [
     </div>
 
     <div class="filter-row">
-      <button v-for="filter in filters" :key="filter.key" class="filter-btn" :class="{ active: activeFilter === filter.key }" @click="activeFilter = filter.key">
-        {{ t('home.filters.' + filter.key) }}
-      </button>
+      <div class="filter-scroll">
+        <button v-for="filter in filters" :key="filter.key" class="filter-btn" :class="{ active: activeFilter === filter.key }" @click="activeFilter = filter.key">
+          {{ t('home.filters.' + filter.key) }}
+          <span v-if="activeFilter === filter.key" class="filter-count">({{ filterCounts[filter.key] }})</span>
+        </button>
+      </div>
+
+      <div v-if="animeList.length > 0" class="sort-wrap">
+        <div v-if="sortMenuOpen" class="menu-overlay" @click="sortMenuOpen = false" />
+        <button class="menu-btn" :class="{ active: sortMenuOpen || sortKey !== 'default' }" :aria-label="t('common.sortAria')"
+                @click="sortMenuOpen = !sortMenuOpen">
+          <ArrowDownUp :stroke-width="1.8" />
+          <span>{{ currentSortLabel }}</span>
+        </button>
+        <Transition name="pop">
+          <div v-if="sortMenuOpen" class="menu-list">
+            <button v-for="option in sortOptions" :key="option" class="menu-item" :class="{ active: sortKey === option }"
+                    @click="selectSort(option)">
+              {{ t('common.sort.' + option) }}
+            </button>
+          </div>
+        </Transition>
+      </div>
     </div>
   </header>
 
@@ -246,12 +319,16 @@ const filters = [
   <FavoritesPage v-if="activeTab === 'favorites'" :anime-list="animeList" @select="openDetail" />
   <UserProfilePage v-if="activeTab === 'profile' && isLoggedIn" :username="currentUsername" :profile-image="currentProfileImage" :anime-list="animeList"
                    @back="activeTab = 'home'" @account-deleted="handleAccountDeleted" @profile-updated="currentUsername = $event; checkSession()"
-                   @select-anime="openDetail" />
+                   @select-anime="openDetail" @imported="fetchUserSeries" />
   <LoginPage v-if="activeTab === 'profile' && !isLoggedIn" @login-success="handleLoginSuccess" @register-success="handleRegisterSuccess"
              @google-login="handleGoogleLogin"/>
 
-  <main v-show="activeTab === 'home'" class="list">
-    <button v-if="isDecember" class="recap-cta" @click="openRecap">
+  <main v-show="activeTab === 'home' && !importOpen" class="list">
+    <button v-if="listLoaded && isLoggedIn && !animeList.length" class="import-cta" @click="importOpen = true">
+      <Download :stroke-width="1.8" />
+      <span>{{ t('common.importCta') }}</span>
+    </button>
+    <button v-else-if="isLoggedIn && isDecember" class="recap-cta" @click="openRecap">
       <Sparkles :stroke-width="1.8" />
       <span>{{ t('common.recapCta') }}</span>
     </button>
@@ -272,7 +349,7 @@ const filters = [
             <template v-if="anime.airing && anime.dayOfWeek"> · {{ translateDay(anime.dayOfWeek) }}</template>
           </span>
           <div class="card-bar">
-            <div class="card-bar-fill" :class="{ done: anime.progress >= anime.total }" :style="{ width: progressPercent(anime) + '%' }"/>
+            <div class="card-bar-fill" :class="{ done: anime.total > 0 && anime.progress >= anime.total }" :style="{ width: progressPercent(anime) + '%' }"/>
           </div>
         </div>
         <div class="menu-wrap">
@@ -291,7 +368,7 @@ const filters = [
       </li>
     </TransitionGroup>
 
-    <div v-if="filteredList.length === 0" class="empty">
+    <div v-if="listLoaded && filteredList.length === 0" class="empty">
       <svg viewBox="0 0 40 40" fill="none">
         <circle cx="20" cy="20" r="16" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="3 3"/>
         <path d="M14 20h12M14 26h8" stroke="var(--text-3)" stroke-width="1" stroke-linecap="round"/>

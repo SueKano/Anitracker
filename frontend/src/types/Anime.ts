@@ -11,9 +11,10 @@ export type Anime = {
   isAdult: boolean
   favorite: boolean
   dayOfWeek: string | null
-  genre: string
+  genres: string[]
   isCompleted: boolean
   isRewatching: boolean
+  score: number
   source: string | null
   seasonYear: number
   season: string

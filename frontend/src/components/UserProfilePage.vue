@@ -6,6 +6,7 @@ import { setLocale, SUPPORTED_LOCALES, type Locale } from '../i18n'
 import EditProfilePage from './EditProfilePage.vue'
 import PrivacyPolicyPage from './PrivacyPolicyPage.vue'
 import ContactPage from './ContactPage.vue'
+import ImportListPage from './ImportListPage.vue'
 import RecapWidget from './RecapWidget.vue'
 import { useToast } from '../composables/useToast'
 import { useRecap } from '../composables/useRecap'
@@ -15,14 +16,15 @@ import type { Anime } from '../types/Anime'
 import { translateGenre } from '../utils/translateLabels'
 
 const props = defineProps<{ username: string, profileImage: string | null, animeList: Anime[] }>()
-const emit = defineEmits<{ back: [], accountDeleted: [], profileUpdated: [username: string], selectAnime: [id: number] }>()
+const emit = defineEmits<{ back: [], accountDeleted: [], profileUpdated: [username: string], selectAnime: [id: number], imported: [] }>()
 
 const EPISODE_MINUTES = 22
 const MINUTES_PER_DAY = 60 * 24
+const ACTIVITY_PREVIEW_COUNT = 5
 
 const toast = useToast()
 const { recap, fetchRecap } = useRecap()
-const { lastUpdatesView } = useLastUpdates()
+const { lastUpdatesView, activityWindowDays } = useLastUpdates()
 const { deleteAccount, updateAvatar } = useAccount()
 const { t, locale } = useI18n()
 
@@ -31,16 +33,32 @@ function changeLocale(value: Locale) {
   setLocale(value)
 }
 
+const activityPage = ref(0)
+const activityPageCount = computed(() => Math.max(1, Math.ceil(lastUpdatesView.value.length / ACTIVITY_PREVIEW_COUNT)))
+const visibleUpdates = computed(() => {
+  const start = activityPage.value * ACTIVITY_PREVIEW_COUNT
+  return lastUpdatesView.value.slice(start, start + ACTIVITY_PREVIEW_COUNT)
+})
+
+function changeActivityPage(offset: number) {
+  activityPage.value = Math.min(Math.max(activityPage.value + offset, 0), activityPageCount.value - 1)
+}
+
 const showRecap = ref(false)
 const confirmDialog = ref<HTMLDialogElement | null>(null)
 const editSection = ref<'profile' | 'password' | null>(null)
 const infoSection = ref<'privacy' | 'contact' | null>(null)
+const importOpen = ref(false)
 const avatarInput = ref<HTMLInputElement | null>(null)
 
 const isDecember = computed(() => new Date().getMonth() === 11)
 const episodesWatched = computed(() => props.animeList.reduce((sum, anime) => sum + anime.episodesWatched, 0))
 const favoritesCount = computed(() => props.animeList.filter(anime => anime.favorite).length)
-const currentlyWatching = computed(() => props.animeList.filter(anime => anime.airingStatus === 'RELEASING').length)
+const averageScore = computed(() => {
+  const scored = props.animeList.filter(anime => anime.score > 0)
+  if (!scored.length) return '—'
+  return (scored.reduce((sum, anime) => sum + anime.score, 0) / scored.length).toFixed(1)
+})
 const completedCount = computed(() => props.animeList.filter(anime => anime.isCompleted).length)
 const daysWatched = computed(() => (episodesWatched.value * EPISODE_MINUTES / MINUTES_PER_DAY).toFixed(1))
 
@@ -48,8 +66,7 @@ const genreDistribution = computed(() => {
   const genreCounts: Record<string, number> = {}
   let totalGenres = 0
   for (const anime of props.animeList) {
-    if (!anime.genre) continue
-    for (const genre of anime.genre.split(', ')) {
+    for (const genre of anime.genres) {
       genreCounts[genre] = (genreCounts[genre] ?? 0) + 1
       totalGenres++
     }
@@ -60,12 +77,9 @@ const genreDistribution = computed(() => {
 })
 
 async function openRecap() {
-  await fetchRecap(new Date().getFullYear())
-  if (!recap.value) {
-    toast.warning(t('toast.recapNeed8'))
-    return
-  }
-  showRecap.value = true
+  const result = await fetchRecap(new Date().getFullYear())
+  if (result === 'insufficient') toast.warning(t('toast.recapNeed8'))
+  if (result === 'ok') showRecap.value = true
 }
 
 async function confirmDeleteAccount() {
@@ -89,6 +103,7 @@ async function onAvatarChange(event: Event) {
                    @profile-updated="emit('profileUpdated', $event); editSection = null"/>
   <PrivacyPolicyPage v-else-if="infoSection === 'privacy'" @back="infoSection = null" @contact="infoSection = 'contact'"/>
   <ContactPage v-else-if="infoSection === 'contact'" @back="infoSection = null"/>
+  <ImportListPage v-else-if="importOpen" @back="importOpen = false" @imported="emit('imported')"/>
 
   <div v-else class="profile">
     <div class="profile-header">
@@ -128,8 +143,8 @@ async function onAvatarChange(event: Event) {
         <span class="stat-value">{{ daysWatched }}</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">{{ t('profile.stats.airing') }}</span>
-        <span class="stat-value">{{ currentlyWatching }}</span>
+        <span class="stat-label">{{ t('profile.stats.averageScore') }}</span>
+        <span class="stat-value">{{ averageScore }}</span>
       </div>
       <div class="stat-card">
         <span class="stat-label">{{ t('profile.stats.completed') }}</span>
@@ -160,17 +175,28 @@ async function onAvatarChange(event: Event) {
     <div class="section-block">
       <p class="section-label">{{ t('profile.recentActivity') }}</p>
       <div v-if="lastUpdatesView.length" class="activity-list">
-        <div v-for="update in lastUpdatesView" :key="update.id" class="activity-row">
-          <img v-if="update.cover" :src="update.cover" :alt="update.title" class="activity-cover" loading="lazy" />
-          <p class="activity-text">
-            {{ update.prefix }}
-            <button class="activity-link" @click="emit('selectAnime', update.id)">{{ update.title }}</button>
-            <template v-if="update.suffix"> {{ update.suffix }}</template>
-          </p>
+        <div class="activity-rows">
+          <div v-for="update in visibleUpdates" :key="update.id" class="activity-row">
+            <img v-if="update.cover" :src="update.cover" :alt="update.title" class="activity-cover" loading="lazy" />
+            <p class="activity-text">
+              {{ update.prefix }}
+              <button class="activity-link" @click="emit('selectAnime', update.id)">{{ update.title }}</button>
+              <template v-if="update.suffix"> {{ update.suffix }}</template>
+            </p>
+          </div>
+        </div>
+        <div v-if="activityPageCount > 1" class="activity-pager">
+          <button class="pager-btn" :disabled="activityPage === 0" :aria-label="t('profile.prevActivityAria')" @click="changeActivityPage(-1)">
+            <ChevronLeft :stroke-width="1.8" />
+          </button>
+          <span class="pager-count">{{ activityPage + 1 }} / {{ activityPageCount }}</span>
+          <button class="pager-btn" :disabled="activityPage === activityPageCount - 1" :aria-label="t('profile.nextActivityAria')" @click="changeActivityPage(1)">
+            <ChevronRight :stroke-width="1.8" />
+          </button>
         </div>
       </div>
       <div v-else class="activity-empty">
-        <span>{{ t('profile.noActivity') }}</span>
+        <span>{{ t('profile.noActivity', { days: activityWindowDays }) }}</span>
       </div>
     </div>
 
@@ -180,6 +206,16 @@ async function onAvatarChange(event: Event) {
         <button v-for="local in locales" :key="local" class="lang-btn" :class="{ active: locale === local }"
                 @click="changeLocale(local)">
           {{ local.toUpperCase() }}
+        </button>
+      </div>
+    </div>
+
+    <div class="section-block">
+      <p class="section-label">{{ t('profile.data') }}</p>
+      <div class="action-list">
+        <button class="action-row" @click="importOpen = true">
+          <span class="action-row-text">{{ t('profile.importAnilist') }}</span>
+          <ChevronRight />
         </button>
       </div>
     </div>

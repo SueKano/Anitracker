@@ -23,4 +23,5 @@ export type UserSeriesPayload = {
   isFavourite: boolean
   isCompleted: boolean
   isRewatching: boolean
+  score: number
 }

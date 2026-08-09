@@ -1,3 +1,5 @@
+@import "./Menu.css";
+
 .header {
   position: sticky;
   top: 0;
@@ -204,12 +206,29 @@
 
 .filter-row {
   display: flex;
+  align-items: center;
   gap: 8px;
   padding-bottom: 14px;
 }
 
+.filter-scroll {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filter-scroll::-webkit-scrollbar { display: none; }
+
+.sort-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .filter-btn {
-  padding: 6px 14px;
+  padding: 6px 10px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-2);
@@ -218,6 +237,11 @@
   border-radius: 50px;
   transition: color 0.15s, background 0.15s, border-color 0.15s;
   white-space: nowrap;
+}
+
+.filter-count {
+  margin-left: 5px;
+  opacity: 0.65;
 }
 
 .filter-btn.active {
@@ -479,7 +503,8 @@
   text-transform: uppercase;
 }
 
-.recap-cta {
+.recap-cta,
+.import-cta {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -496,7 +521,8 @@
   font-weight: 500;
   transition: background 0.2s;
 }
-.recap-cta:hover { background: rgba(176, 164, 122, 0.18); }
+.recap-cta:hover,
+.import-cta:hover { background: rgba(176, 164, 122, 0.18); }
 
 @media (min-width: 768px) {
   .nav { max-width: 480px; }

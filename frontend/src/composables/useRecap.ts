@@ -8,19 +8,21 @@ export function useRecap() {
   const recap = ref<Recap | null>(null)
   const loading = ref(false)
 
-  async function fetchRecap(year: number) {
+  async function fetchRecap(year: number): Promise<'ok' | 'insufficient' | 'error'> {
     loading.value = true
     try {
       const response = await fetch(`/api/recap/${year}`, { credentials: 'include' })
       if (!response.ok) {
         toast.error(t('toast.recapError'))
         recap.value = null
-        return
+        return 'error'
       }
       recap.value = await response.json()
+      return recap.value ? 'ok' : 'insufficient'
     } catch {
       toast.error(t('toast.recapError'))
       recap.value = null
+      return 'error'
     } finally {
       loading.value = false
     }

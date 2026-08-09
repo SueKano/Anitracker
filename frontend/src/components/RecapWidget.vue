@@ -1,29 +1,77 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { X, ChevronLeft, ChevronRight, Sparkles } from 'lucide-vue-next'
+import { X, ChevronLeft, ChevronRight, Sparkles, Download, LoaderCircle } from 'lucide-vue-next'
 import type { Recap } from '../types/Recap'
 import { formatDuration, getWatchTimeParts } from '../utils/formatDuration'
-import { translateSeason, translateFormat, translateGenre } from '../utils/translateLabels'
+import { translateSeason, translateGenre } from '../utils/translateLabels'
+import { useToast } from '../composables/useToast'
+
+type CaptureOptions = Parameters<typeof import('html-to-image').toPng>[1]
 
 const props = defineProps<{ recap: Recap }>()
 const emit = defineEmits<{ close: [] }>()
 const { t } = useI18n()
+const toast = useToast()
 
-const completionRatio = computed(() => {
-  if (!props.recap.worksAdded) return null
-  const ratio = (props.recap.worksCompleted.total / props.recap.worksAdded) * 100
-  return Math.min(100, Math.round(ratio))
+const IMAGE_WIDTH = 1080
+
+const recapTrack = ref<HTMLElement | null>(null)
+const isCapturing = ref(false)
+
+async function downloadSlide() {
+  const slide = recapTrack.value?.children[currentSlide.value] as HTMLElement | undefined
+  if (!slide) return
+
+  isCapturing.value = true
+  const options: CaptureOptions = {
+    backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim(),
+    pixelRatio: IMAGE_WIDTH / slide.offsetWidth,
+    cacheBust: true,
+  }
+
+  try {
+    const { toPng } = await import('html-to-image')
+    const dataUrl = await toPng(slide, options)
+    const link = document.createElement('a')
+    link.download = `anitracker-${props.recap.year}-${currentSlide.value}.png`
+    link.href = dataUrl
+    link.click()
+  } catch {
+    toast.error(t('toast.recapDownloadError'))
+  } finally {
+    isCapturing.value = false
+  }
+}
+
+const summary = computed(() => {
+  const { scoreSeries, topSeriesSeason } = props.recap
+  const source = scoreSeries ? scoreSeries.top : topSeriesSeason.slice(0, 3)
+
+  return {
+    label: scoreSeries ? t('recap.scoresTitle') : t('recap.someSeries'),
+    series: source.map(userSeries => ({
+      name: userSeries.series.romajiName,
+      portrait: userSeries.series.portraitUrl,
+      score: scoreSeries ? userSeries.score : null,
+    })),
+  }
 })
 
-const TOTAL_SLIDES = 6
+const BASE_SLIDES = 6
 const SWIPE_THRESHOLD = 50
+const SCORE_SLIDE_INDEX = 4
+
+const TOTAL_SLIDES = computed(() => BASE_SLIDES + (props.recap.scoreSeries ? 1 : 0))
 
 const currentSlide = ref(0)
 const touchStartX = ref(0)
 const maxSlideSeen = ref(0)
 
 const isIntro = computed(() => currentSlide.value === 0)
+
+const genreShare = (seriesCount: number) => (seriesCount / props.recap.worksCompleted.total) * 100 + '%'
+const showsEverySeason = computed(() => props.recap.topSeriesSeason.length === props.recap.totalSeriesSeason)
 
 const pairSlides = computed(() => {
   const { firstWatched, lastWatched, fastestSeries, slowestSeries } = props.recap
@@ -47,12 +95,12 @@ const pairSlides = computed(() => {
   ]
 })
 
-watch(currentSlide, (n) => {
-  if (n > maxSlideSeen.value) maxSlideSeen.value = n
+watch(currentSlide, (number) => {
+  if (number > maxSlideSeen.value) maxSlideSeen.value = number
 })
 
 function nextSlide() {
-  if (currentSlide.value < TOTAL_SLIDES - 1) currentSlide.value++
+  if (currentSlide.value < TOTAL_SLIDES.value - 1) currentSlide.value++
 }
 
 function prevSlide() {
@@ -84,12 +132,18 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   <div class="recap-overlay">
     <header class="recap-header">
       <span class="recap-year">{{ t('recap.year', { year: recap.year }) }}</span>
-      <button class="recap-close" :aria-label="t('recap.closeAria')" @click="emit('close')">
-        <X :stroke-width="2" />
-      </button>
+      <div class="recap-actions">
+        <button class="recap-icon" :aria-label="t('recap.downloadAria')" :disabled="isCapturing" @click="downloadSlide">
+          <LoaderCircle v-if="isCapturing" class="recap-spin" :stroke-width="2" />
+          <Download v-else :stroke-width="2" />
+        </button>
+        <button class="recap-icon" :aria-label="t('recap.closeAria')" @click="emit('close')">
+          <X :stroke-width="2" />
+        </button>
+      </div>
     </header>
 
-    <div class="recap-track" :style="{ transform: `translateX(-${currentSlide * 100}%)` }" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
+    <div ref="recapTrack" class="recap-track" :style="{ transform: `translateX(-${currentSlide * 100}%)` }" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
       <section class="recap-slide recap-intro" @click="nextSlide">
         <div class="intro-sparkles" aria-hidden="true">
           <Sparkles class="sparkle sparkle-1" :stroke-width="1.5" />
@@ -107,7 +161,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
           <h2 class="slide-title">{{ translateSeason(recap.topSeason) }}</h2>
           <span class="slide-label">{{ t('recap.seasonTotal', { count: recap.totalSeriesSeason }) }}</span>
         </header>
-        <span class="slide-caption">{{ t('recap.someSeries') }}</span>
+        <span class="slide-caption">{{ showsEverySeason ? t('recap.allSeries') : t('recap.someSeries') }}</span>
         <div class="season-posters" :class="`count-${recap.topSeriesSeason.length}`">
           <figure v-for="userSeries in recap.topSeriesSeason" :key="userSeries.series.romajiName">
             <img :src="userSeries.series.portraitUrl" :alt="userSeries.series.romajiName" loading="lazy"/>
@@ -135,13 +189,79 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         </template>
       </section>
 
+      <section v-if="recap.scoreSeries" class="recap-slide">
+        <template v-if="maxSlideSeen >= SCORE_SLIDE_INDEX">
+          <header class="slide-heading">
+            <span class="slide-label">{{ t('recap.scoresLabel') }}</span>
+            <h2 class="slide-title">{{ t('recap.scoresTitle') }}</h2>
+          </header>
+
+          <div class="podium">
+            <figure v-for="(userSeries, rank) in recap.scoreSeries.top" :key="userSeries.series.romajiName" class="podium-step">
+              <div class="podium-frame">
+                <img :src="userSeries.series.portraitUrl" :alt="userSeries.series.romajiName" loading="lazy"/>
+                <span class="podium-score" :class="{ 'podium-score--first': rank === 0 }">{{ userSeries.score }}</span>
+              </div>
+              <figcaption class="podium-name">{{ userSeries.series.romajiName }}</figcaption>
+            </figure>
+          </div>
+
+          <div class="score-footer">
+            <div class="score-cell">
+              <p class="score-cell-label">{{ t('recap.averageLabel') }}</p>
+              <p class="score-cell-value">{{ recap.scoreSeries.average.toFixed(1) }}</p>
+            </div>
+            <div class="score-cell">
+              <p class="score-cell-label">{{ t('recap.disappointmentLabel') }}</p>
+              <p class="score-cell-value score-cell-value--low">{{ recap.scoreSeries.disappointment.score }}</p>
+              <p class="score-cell-name">{{ recap.scoreSeries.disappointment.series.romajiName }}</p>
+            </div>
+          </div>
+        </template>
+      </section>
+
       <section class="recap-slide">
         <header class="slide-heading">
-          <span class="slide-label">{{ t('recap.yourYear') }}</span>
-          <h2 class="slide-title">{{ t('recap.inNumbers') }}</h2>
+          <span class="slide-label">{{ t('recap.preferences') }}</span>
+          <h2 class="slide-title">{{ t('recap.favGenres') }}</h2>
         </header>
 
-        <div class="cifras">
+        <template v-if="maxSlideSeen >= TOTAL_SLIDES - 2">
+          <div class="genre-cards">
+            <article v-for="(genre, rank) in recap.topGenres" :key="genre.name" class="genre-card" :style="{ animationDelay: rank * 0.12 + 's' }">
+              <div class="genre-backdrop" aria-hidden="true">
+                <img v-for="portrait in genre.portraits" :key="portrait" :src="portrait" alt="" loading="lazy"/>
+              </div>
+              <span class="genre-rank" aria-hidden="true">{{ rank + 1 }}</span>
+              <div class="genre-body">
+                <h3 class="genre-name">{{ translateGenre(genre.name) }}</h3>
+                <p class="genre-stats">
+                  <span class="genre-stat">
+                    <span class="genre-stat-num">{{ genre.seriesCount }}</span>{{ t('recap.genreSeries') }}
+                  </span>
+                  <span class="genre-stat">
+                    <span class="genre-stat-num">{{ genre.episodes }}</span>{{ t('recap.genreEpisodes') }}
+                  </span>
+                  <span class="genre-stat">
+                    <template v-for="(part, index) in getWatchTimeParts(genre.episodes)" :key="index">
+                      <span class="genre-stat-num">{{ part.value }}</span>{{ part.unit }}
+                    </template>
+                  </span>
+                </p>
+              </div>
+              <div class="genre-share" :style="{ width: genreShare(genre.seriesCount), animationDelay: rank * 0.12 + 0.25 + 's' }"/>
+            </article>
+          </div>
+        </template>
+      </section>
+
+      <section class="recap-slide summary-slide">
+        <template v-if="maxSlideSeen >= TOTAL_SLIDES - 1">
+          <header class="summary-head">
+            <p class="summary-kicker">{{ t('recap.cardTitle') }}</p>
+            <p class="summary-year">{{ recap.year }}</p>
+          </header>
+
           <div class="cifras-pair">
             <div class="cifras-cell">
               <p class="cifras-num">{{ recap.worksCompleted.total }}</p>
@@ -158,40 +278,32 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
             </div>
           </div>
 
-          <div v-if="completionRatio !== null" class="cifras-ratio">
-            <i18n-t keypath="recap.ratio" tag="p" class="cifras-ratio-text">
-              <template #added><span class="cifras-ratio-num">{{ recap.worksAdded }}</span></template>
-              <template #completed><span class="cifras-ratio-num">{{ recap.worksCompleted.total }}</span></template>
-              <template #percent><span class="cifras-ratio-num">{{ completionRatio }}%</span></template>
-            </i18n-t>
-          </div>
-        </div>
-      </section>
-
-      <section class="recap-slide">
-        <header class="slide-heading">
-          <h2 class="slide-title">{{ t('recap.preferences') }}</h2>
-        </header>
-
-        <div class="dist-block">
-          <h3 class="dist-title">{{ t('recap.byFormat') }}</h3>
-          <div class="dist-rows">
-            <div v-for="(count, format) in recap.worksCompleted.formats" :key="format" class="dist-row">
-              <span class="dist-name">{{ translateFormat(format) }}</span>
-              <span class="dist-count">{{ count }}</span>
+          <div class="summary-block">
+            <p class="summary-block-label">{{ summary.label }}</p>
+            <div class="summary-posters">
+              <figure v-for="item in summary.series" :key="item.name">
+                <div class="summary-frame">
+                  <img :src="item.portrait" :alt="item.name" loading="lazy"/>
+                  <span v-if="item.score !== null" class="summary-score">{{ item.score }}</span>
+                </div>
+                <figcaption class="summary-name">{{ item.name }}</figcaption>
+              </figure>
             </div>
           </div>
-        </div>
 
-        <div class="dist-block">
-          <h3 class="dist-title">{{ t('recap.favGenres') }}</h3>
-          <div class="dist-rows">
-            <div v-for="(count, genre) in recap.topGenres" :key="genre" class="dist-row">
-              <span class="dist-name">{{ translateGenre(genre) }}</span>
-              <span class="dist-count">{{ count }}</span>
+          <div class="summary-facts">
+            <div class="summary-fact">
+              <p class="summary-fact-label">{{ t('recap.factGenre') }}</p>
+              <p class="summary-fact-value">{{ translateGenre(recap.topGenres[0].name) }}</p>
+            </div>
+            <div class="summary-fact">
+              <p class="summary-fact-label">{{ t('recap.factSeason') }}</p>
+              <p class="summary-fact-value">{{ translateSeason(recap.topSeason) }}</p>
             </div>
           </div>
-        </div>
+
+          <p class="summary-brand">myanitracker.com</p>
+        </template>
       </section>
     </div>
 

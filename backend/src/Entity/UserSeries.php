@@ -10,6 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Attribute\Ignore;
 
 #[ORM\Entity]
+#[ORM\UniqueConstraint(columns: ['user_id', 'series_id'])]
 class UserSeries extends AbstractEntity
 {
     #[ORM\ManyToOne(targetEntity: User::class)]
@@ -46,6 +47,50 @@ class UserSeries extends AbstractEntity
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     #[Groups(['userProfile:series', 'home:userSeries','detail:userSeries'])]
     private bool $isRewatching = false;
+
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
+    #[Groups(['detail:userSeries', 'recap:userSeries', 'home:userSeries'])]
+    private int $score = 0;
+
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTime $importedAt = null;
+
+    #[Gedmo\Timestampable(on: 'change', field: 'lastEpisodeWatchedCount')]
+    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    private ?\DateTime $lastProgressAt = null;
+
+    public function getLastProgressAt(): ?\DateTime
+    {
+        return $this->lastProgressAt;
+    }
+
+    public function setLastProgressAt(?\DateTime $lastProgressAt): UserSeries
+    {
+        $this->lastProgressAt = $lastProgressAt;
+        return $this;
+    }
+
+    public function getScore(): int
+    {
+        return $this->score;
+    }
+
+    public function setScore(int $score): UserSeries
+    {
+        $this->score = $score;
+        return $this;
+    }
+
+    public function getImportedAt(): ?\DateTime
+    {
+        return $this->importedAt;
+    }
+
+    public function setImportedAt(?\DateTime $importedAt): UserSeries
+    {
+        $this->importedAt = $importedAt;
+        return $this;
+    }
 
     public function isRewatching(): bool
     {
