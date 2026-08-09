@@ -3,7 +3,9 @@
 namespace App\Command;
 
 use App\Entity\Series;
+use App\Exception\AnilistUnavailableException;
 use App\Repository\SeriesRepository;
+use App\Services\SeriesRefresher;
 use Doctrine\ORM\EntityManagerInterface;
 use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
@@ -14,7 +16,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpClient\Response\StreamWrapper;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface as HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -27,6 +30,7 @@ class MirrorSeriesCoversCommand extends Command
 
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly SeriesRepository $seriesRepository,
                                 private readonly HttpClientInterface $httpClient, private readonly FilesystemOperator $seriesImagesStorage,
+                                private readonly SeriesRefresher $seriesRefresher,
                                 #[Autowire('%env(R2_PUBLIC_URL)%')] private readonly string $cdnBaseUrl)
     {
         parent::__construct();
@@ -51,22 +55,27 @@ class MirrorSeriesCoversCommand extends Command
         $io->writeln(sprintf('%d portadas, copiando con sleep de %dms entre descargas', $total, self::SLEEP_MS));
         $downloaded = 0;
         $reused = 0;
+        $repaired = 0;
         $failed = 0;
 
         $io->progressStart($total);
         foreach ($series as $index => $serie) {
-            $key = $serie->getAnilistId() . '.' . $this->resolveExtension($serie->getPortraitUrl());
+            $key = $this->buildKey($serie);
             $hitAnilist = true;
             try {
                 if ($this->seriesImagesStorage->fileExists($key)) {
                     $hitAnilist = false;
                     $reused++;
                 } else {
-                    $this->downloadCover($serie->getPortraitUrl(), $key);
+                    $staleUrl = $serie->getPortraitUrl();
+                    $key = $this->downloadCoverRefreshingIfGone($serie, $key);
                     $downloaded++;
+                    if ($serie->getPortraitUrl() !== $staleUrl) {
+                        $repaired++;
+                    }
                 }
                 $serie->setPortraitMirrorUrl(rtrim($this->cdnBaseUrl, '/') . '/series/' . $key);
-            } catch (HttpExceptionInterface | FilesystemException $exception) {
+            } catch (HttpExceptionInterface | FilesystemException | AnilistUnavailableException $exception) {
                 $io->writeln(sprintf("\n  %d: %s", $serie->getAnilistId(), $exception->getMessage()));
                 $failed++;
             }
@@ -78,21 +87,39 @@ class MirrorSeriesCoversCommand extends Command
         $this->entityManager->flush();
         $io->progressFinish();
 
-        $io->table(['Métrica', 'Cantidad'], [['Procesadas', $total], ['Descargadas', $downloaded], ['Ya estaban en R2', $reused], ['Fallidas', $failed]]);
+        $io->table(['Métrica', 'Cantidad'], [['Procesadas', $total], ['Descargadas', $downloaded], ['Ya estaban en R2', $reused],
+            ['URL caducada reparada', $repaired], ['Fallidas', $failed]]);
 
         return $failed === $total ? Command::FAILURE : Command::SUCCESS;
+    }
+    
+    private function downloadCoverRefreshingIfGone(Series $series, string $key): string
+    {
+        try {
+            $this->downloadCover($series->getPortraitUrl(), $key);
+
+            return $key;
+        } catch (ClientExceptionInterface $exception) {
+            if ($exception->getResponse()->getStatusCode() !== Response::HTTP_NOT_FOUND) {
+                throw $exception;
+            }
+        }
+
+        $this->seriesRefresher->refreshFromAnilist($series);
+        $refreshedKey = $this->buildKey($series);
+        $this->downloadCover($series->getPortraitUrl(), $refreshedKey);
+
+        return $refreshedKey;
     }
 
     private function downloadCover(string $sourceUrl, string $key): void
     {
-        $response = $this->httpClient->request('GET', $sourceUrl);
-        $stream = StreamWrapper::createResource($response, $this->httpClient);
+        $this->seriesImagesStorage->write($key, $this->httpClient->request('GET', $sourceUrl)->getContent());
+    }
 
-        try {
-            $this->seriesImagesStorage->writeStream($key, $stream);
-        } finally {
-            fclose($stream);
-        }
+    private function buildKey(Series $series): string
+    {
+        return $series->getAnilistId() . '.' . $this->resolveExtension($series->getPortraitUrl());
     }
 
     private function resolveExtension(string $sourceUrl): string
