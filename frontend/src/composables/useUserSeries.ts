@@ -15,6 +15,10 @@ export function useUserSeries() {
   const listLoaded = ref(false)
   let listAbortController: AbortController | null = null
 
+  function cancelUserSeriesFetch() {
+    listAbortController?.abort()
+  }
+
   async function fetchUserSeries() {
     listAbortController?.abort()
     listAbortController = new AbortController()
@@ -26,33 +30,29 @@ export function useUserSeries() {
       }
 
       const data = await response.json() as { userSeries: UserSeriesPayload[] }
-      const previousById = new Map(animeList.value.map(anime => [anime.id, anime]))
-      animeList.value = data.userSeries.map((userSeries): Anime => {
-        const previous = previousById.get(userSeries.series.anilistId)
-        return {
-          id: userSeries.series.anilistId,
-          title: userSeries.series.romajiName,
-          cover: userSeries.series.portraitUrl ?? '',
-          progress: Math.max(userSeries.lastEpisodeWatchedCount, previous?.progress ?? 0),
-          episodesWatched: userSeries.countEpisodesCompleted,
-          total: userSeries.series.totalEpisodes,
-          aired: userSeries.series.currentAiringEpisode,
-          airing: userSeries.series.airingStatus === 'RELEASING',
-          airingStatus: userSeries.series.airingStatus,
-          isAdult: userSeries.series.isAdult,
-          favorite: userSeries.isFavourite,
-          dayOfWeek: userSeries.series.airingDay,
-          genres: userSeries.series.genres,
-          isCompleted: userSeries.isCompleted,
-          isRewatching: userSeries.isRewatching,
-          score: userSeries.score,
-          season: userSeries.series.season ?? '',
-          format: userSeries.series.format,
-          source: userSeries.series.source || null,
-          seasonYear: userSeries.series.seasonYear ?? 0,
-          isTracked: true,
-        }
-      })
+      animeList.value = data.userSeries.map((userSeries): Anime => ({
+        id: userSeries.series.anilistId,
+        title: userSeries.series.romajiName,
+        cover: userSeries.series.portraitUrl ?? '',
+        progress: userSeries.lastEpisodeWatchedCount,
+        episodesWatched: userSeries.countEpisodesCompleted,
+        total: userSeries.series.totalEpisodes,
+        aired: userSeries.series.currentAiringEpisode,
+        airing: userSeries.series.airingStatus === 'RELEASING',
+        airingStatus: userSeries.series.airingStatus,
+        isAdult: userSeries.series.isAdult,
+        favorite: userSeries.isFavourite,
+        dayOfWeek: userSeries.series.airingDay,
+        genres: userSeries.series.genres,
+        isCompleted: userSeries.isCompleted,
+        isRewatching: userSeries.isRewatching,
+        score: userSeries.score,
+        season: userSeries.series.season ?? '',
+        format: userSeries.series.format,
+        source: userSeries.series.source || null,
+        seasonYear: userSeries.series.seasonYear ?? 0,
+        isTracked: true,
+      }))
       listLoaded.value = true
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return
@@ -77,6 +77,7 @@ export function useUserSeries() {
         return
       }
       const data = await response.json() as { lastEpisodeWatched: number; countEpisodesCompleted: number; isCompleted: boolean; isRewatching: boolean; justCompleted: boolean; rewatchFinished: boolean }
+      cancelUserSeriesFetch()
       const target = animeList.value.find(item => item.id === anime.id)
       if (target) {
         target.progress = data.lastEpisodeWatched
@@ -107,24 +108,30 @@ export function useUserSeries() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ anilistId })
       })
-      if (response.ok) await fetchUserSeries()
-      else toast.error(t('toast.seriesDeleteError'))
+      if (!response.ok) {
+        toast.error(t('toast.seriesDeleteError'))
+        return
+      }
+      await fetchUserSeries()
     } catch {
       toast.error(t('toast.seriesDeleteError'))
     }
   }
 
   function setFavorite(id: number, isFavourite: boolean) {
+    cancelUserSeriesFetch()
     const anime = animeList.value.find(a => a.id === id)
     if (anime) anime.favorite = isFavourite
   }
 
   function applyScore(id: number, score: number) {
+    cancelUserSeriesFetch()
     const anime = animeList.value.find(anime => anime.id === id)
     if (anime) anime.score = score
   }
 
   function markRewatch(id: number) {
+    cancelUserSeriesFetch()
     const anime = animeList.value.find(a => a.id === id)
     if (anime) {
       anime.isRewatching = true
@@ -133,6 +140,7 @@ export function useUserSeries() {
   }
 
   function setAiredEpisode(id: number, aired: number, airingStatus: string) {
+    cancelUserSeriesFetch()
     const anime = animeList.value.find(a => a.id === id)
     if (anime) {
       anime.aired = aired

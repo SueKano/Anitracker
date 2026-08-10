@@ -14,6 +14,7 @@ use App\Repository\SeriesRepository;
 use App\Services\AnilistApiClient;
 use App\Services\SeriesRefresher;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\DBAL\LockMode;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -86,48 +87,59 @@ class SeriesController extends AbstractController
         $userSeries = $this->findUserSeries($data['anilistId'], $user) ?? throw new ApiException(ErrorCode::SERIES_NOT_IN_LIST, Response::HTTP_NOT_FOUND);
 
         $foundSeries = $userSeries->getSeries();
-        $numberEpisodeToAdd = $userSeries->getLastEpisodeWatchedCount() + 1;
-        if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
+        $episodeToVerify = $userSeries->getLastEpisodeWatchedCount() + 1;
+        if (!$this->episodeIsAvailable($foundSeries, $episodeToVerify)) {
             try {
                 if ($this->seriesRefresher->refreshIfReleasingDue($foundSeries)) {
                     $this->entityManager->flush();
                 }
             } catch (AnilistUnavailableException) {
                 $airedFromSchedule = $foundSeries->getLastAiredEpisodeFromSchedule();
-                if ($airedFromSchedule < $numberEpisodeToAdd) {
+                if ($airedFromSchedule < $episodeToVerify) {
                     throw new ApiException(ErrorCode::EPISODE_VERIFICATION_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
                 }
                 $foundSeries->setCurrentAiringEpisode($airedFromSchedule);
                 $this->entityManager->flush();
             }
+        }
 
+        $episodeAdded = $this->entityManager->wrapInTransaction(function () use ($userSeries, $foundSeries, $user): ?array {
+            $this->entityManager->refresh($userSeries, LockMode::PESSIMISTIC_WRITE);
+
+            $numberEpisodeToAdd = $userSeries->getLastEpisodeWatchedCount() + 1;
             if (!$this->episodeIsAvailable($foundSeries, $numberEpisodeToAdd)) {
-                throw $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value ? new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT)
-                    : new ApiException(ErrorCode::EPISODE_NOT_AIRED, Response::HTTP_CONFLICT);
+                return null;
             }
+
+            $isLastEpisode = $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes();
+            $justCompleted = $isLastEpisode && !$userSeries->isCompleted();
+            $rewatchFinished = $isLastEpisode && $userSeries->isRewatching();
+
+            if ($isLastEpisode) {
+                $userSeries->setIsCompleted(true);
+                $userSeries->setIsRewatching(false);
+            }
+
+            $userSeries->setLastEpisodeWatchedCount($numberEpisodeToAdd);
+            $userSeries->setCountEpisodesCompleted($userSeries->getCountEpisodesCompleted() + 1);
+
+            $userSeriesHistory = new UserEpisodeWatch();
+            $userSeriesHistory->setUser($user);
+            $userSeriesHistory->setSeries($foundSeries);
+
+            $this->entityManager->persist($userSeriesHistory);
+
+            return ['lastEpisodeWatched' => $numberEpisodeToAdd, 'isCompleted' => $userSeries->isCompleted(), 'isRewatching' => $userSeries->isRewatching(),
+                'countEpisodesCompleted' => $userSeries->getCountEpisodesCompleted(), 'justCompleted' => $justCompleted, 'rewatchFinished' => $rewatchFinished,
+            ];
+        });
+
+        if ($episodeAdded === null) {
+            throw $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value ? new ApiException(ErrorCode::SERIES_ALREADY_COMPLETED, Response::HTTP_CONFLICT)
+                : new ApiException(ErrorCode::EPISODE_NOT_AIRED, Response::HTTP_CONFLICT);
         }
-        $isLastEpisode = $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes();
-        $justCompleted = $isLastEpisode && !$userSeries->isCompleted();
-        $rewatchFinished = $isLastEpisode && $userSeries->isRewatching();
 
-        if ($isLastEpisode) {
-            $userSeries->setIsCompleted(true);
-            $userSeries->setIsRewatching(false);
-        }
-
-        $userSeries->setLastEpisodeWatchedCount($numberEpisodeToAdd);
-        $userSeries->setCountEpisodesCompleted($userSeries->getCountEpisodesCompleted() + 1);
-
-        $userSeriesHistory = new UserEpisodeWatch();
-        $userSeriesHistory->setUser($user);
-        $userSeriesHistory->setSeries($foundSeries);
-
-        $this->entityManager->persist($userSeriesHistory);
-        $this->entityManager->flush();
-
-        return $this->json(['lastEpisodeWatched' => $numberEpisodeToAdd, 'isCompleted' => $userSeries->isCompleted(), 'isRewatching' => $userSeries->isRewatching(),
-            'countEpisodesCompleted' => $userSeries->getCountEpisodesCompleted(), 'justCompleted' => $justCompleted, 'rewatchFinished' => $rewatchFinished,
-        ]);
+        return $this->json($episodeAdded);
     }
 
     #[Route('/api/series/getUserSeries', name: 'get_user_series', methods: ['GET'])]
