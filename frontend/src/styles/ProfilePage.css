@@ -476,3 +476,24 @@
   border-color: var(--accent);
   color: #fff;
 }
+
+@media (max-width: 360px) {
+  .profile-identity { gap: 12px; padding: 24px 12px 22px; }
+
+  .profile-avatar,
+  .profile-avatar-img { width: 76px; height: 76px; }
+
+  .profile-avatar-letter { font-size: 28px; }
+
+  .profile-username { font-size: 19px; }
+
+  .stats-grid { margin: 0 12px; }
+
+  .stat-card { padding: 11px 12px; }
+
+  .stat-value { font-size: 21px; }
+
+  .section-block { padding: 22px 12px 0; }
+
+  .delete-btn { margin: 18px 12px 0; width: calc(100% - 24px); }
+}

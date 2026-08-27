@@ -25,10 +25,16 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
 }
 
 .menu-wrap {
   position: relative;
+  min-width: 0;
+}
+
+.head-actions .menu-btn {
+  max-width: 100%;
 }
 
 .grid {
@@ -206,4 +212,14 @@
 .pop-leave-to {
   opacity: 0;
   transform: scale(0.96) translateY(-4px);
+}
+
+@media (max-width: 360px) {
+  .page-head { padding: 14px 12px 10px; }
+
+  .page-title { font-size: 19px; }
+
+  .sort-wrap .menu-btn span { display: none; }
+
+  .grid { padding: 0 12px; }
 }

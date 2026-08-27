@@ -118,7 +118,7 @@
 
 .stats-row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1.3fr;
   margin: 14px 20px 0;
   border: 1px solid var(--border-md);
   border-radius: 10px;
@@ -355,4 +355,26 @@
 .badge-score svg {
   width: 13px;
   height: 13px;
+}
+
+@media (max-width: 360px) {
+  .detail-header { padding: 12px; }
+
+  .title-block { padding: 0 14px; }
+
+  .title { font-size: 20px; }
+
+  .stats-row { margin: 14px 14px 0; }
+
+  .stat { padding: 10px 6px; }
+
+  .stat-value { font-size: 14px; }
+
+  .actions { padding: 12px 14px 0; }
+
+  .action-btn { flex: 1 1 100%; }
+
+  .section { padding: 14px 14px 0; }
+
+  .info-cell { padding: 10px 12px; }
 }
