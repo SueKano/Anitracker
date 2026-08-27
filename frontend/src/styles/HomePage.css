@@ -599,7 +599,7 @@
 
   .filter-btn { padding: 6px 9px; font-size: 11px; }
 
-  .sort-wrap .menu-btn span { display: none; }
+  .sort-wrap .menu-btn:not(.has-sort) span { display: none; }
 
   .cards { padding: 0 10px; }
 

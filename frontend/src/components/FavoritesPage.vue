@@ -103,7 +103,7 @@ const currentGenreLabel = computed(() => genreFilter.value ? translateGenre(genr
         </div>
 
         <div class="menu-wrap sort-wrap">
-          <button class="menu-btn" :class="{ active: openMenu === 'sort' }" @click="toggleMenu('sort')" :aria-label="t('common.sortAria')">
+          <button class="menu-btn" :class="{ active: openMenu === 'sort', 'has-sort': sortKey !== 'default' }" @click="toggleMenu('sort')" :aria-label="t('common.sortAria')">
             <ArrowDownUp :stroke-width="1.8" />
             <span>{{ currentSortLabel }}</span>
           </button>

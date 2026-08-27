@@ -298,7 +298,7 @@ const filters = [
 
       <div v-if="animeList.length > 0" class="sort-wrap">
         <div v-if="sortMenuOpen" class="menu-overlay" @click="sortMenuOpen = false" />
-        <button class="menu-btn" :class="{ active: sortMenuOpen || sortKey !== 'default' }" :aria-label="t('common.sortAria')"
+        <button class="menu-btn" :class="{ active: sortMenuOpen || sortKey !== 'default', 'has-sort': sortKey !== 'default' }" :aria-label="t('common.sortAria')"
                 @click="sortMenuOpen = !sortMenuOpen">
           <ArrowDownUp :stroke-width="1.8" />
           <span>{{ currentSortLabel }}</span>

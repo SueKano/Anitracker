@@ -219,7 +219,7 @@
 
   .page-title { font-size: 19px; }
 
-  .sort-wrap .menu-btn span { display: none; }
+  .sort-wrap .menu-btn:not(.has-sort) span { display: none; }
 
   .grid { padding: 0 12px; }
 }
