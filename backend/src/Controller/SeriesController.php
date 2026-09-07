@@ -94,12 +94,9 @@ class SeriesController extends AbstractController
                     $this->entityManager->flush();
                 }
             } catch (AnilistUnavailableException) {
-                $airedFromSchedule = $foundSeries->getLastAiredEpisodeFromSchedule();
-                if ($airedFromSchedule < $episodeToVerify) {
+                if (!$this->episodeIsAvailable($foundSeries, $episodeToVerify)) {
                     throw new ApiException(ErrorCode::EPISODE_VERIFICATION_FAILED, Response::HTTP_SERVICE_UNAVAILABLE);
                 }
-                $foundSeries->setCurrentAiringEpisode($airedFromSchedule);
-                $this->entityManager->flush();
             }
         }
 
@@ -316,7 +313,7 @@ class SeriesController extends AbstractController
     {
         $seriesEpisodes = match ($series->getAiringStatus()) {
             SeriesStatus::FINISHED->value  => $series->getTotalEpisodes(),
-            SeriesStatus::RELEASING->value => $series->getCurrentAiringEpisode(),
+            SeriesStatus::RELEASING->value => $series->getAiredEpisodes(),
             default => 0,
         };
 

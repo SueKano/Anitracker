@@ -34,7 +34,6 @@ class Series extends AbstractEntity
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     private int $totalEpisodes = 0;
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
-    #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     private int $currentAiringEpisode = 0;
 
     #[ORM\Column(type:'string', length: 10, nullable: true)]
@@ -145,6 +144,13 @@ class Series extends AbstractEntity
 
         return max([0, ...array_column($airedEpisodes, 'episode')]);
     }
+    
+    #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
+    #[SerializedName('currentAiringEpisode')]
+    public function getAiredEpisodes(): int
+    {
+        return max($this->currentAiringEpisode, $this->getLastAiredEpisodeFromSchedule());
+    }
 
     public function getTags(): array
     {
@@ -155,11 +161,6 @@ class Series extends AbstractEntity
     {
         $this->tags = $tags;
         return $this;
-    }
-
-    public function getSynonyms(): array
-    {
-        return $this->synonyms;
     }
 
     public function setSynonyms(array $synonyms): Series
@@ -278,11 +279,6 @@ class Series extends AbstractEntity
     {
         $this->airingDay = $airingDay;
         return $this;
-    }
-
-    public function getCurrentAiringEpisode(): int
-    {
-        return $this->currentAiringEpisode;
     }
 
     public function setCurrentAiringEpisode(int $currentAiringEpisode): Series
