@@ -144,6 +144,16 @@ class Series extends AbstractEntity
 
         return max([0, ...array_column($airedEpisodes, 'episode')]);
     }
+
+    private function nextAiringFromSchedule(): ?\DateTime
+    {
+        $now = time();
+        $pendingTimestamps = array_column(
+            array_filter($this->airingSchedule, static fn (array $node) => $node['airingAt'] > $now), 'airingAt'
+        );
+
+        return $pendingTimestamps === [] ? null : new \DateTime()->setTimestamp(min($pendingTimestamps));
+    }
     
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     #[SerializedName('currentAiringEpisode')]
@@ -357,9 +367,11 @@ class Series extends AbstractEntity
         $this->isAdult = $media['isAdult'] ?? false;
         $this->totalEpisodes = max($this->totalEpisodes, self::resolveTotalEpisodes($media));
 
-        if (isset($media['airingSchedule']['nodes'])) {
+        $scheduleNodes = $media['airingSchedule']['nodes'] ?? [];
+        $keepStoredSchedule = $scheduleNodes === [] && $this->airingStatus === SeriesStatus::RELEASING->value;
+        if (!$keepStoredSchedule) {
             $this->airingSchedule = array_values(array_map(
-                static fn (array $node) => ['episode' => $node['episode'], 'airingAt' => $node['airingAt']], $media['airingSchedule']['nodes']
+                static fn (array $node) => ['episode' => $node['episode'], 'airingAt' => $node['airingAt']], $scheduleNodes
             ));
         }
 
@@ -375,9 +387,13 @@ class Series extends AbstractEntity
         }
 
         $airingAt = $next['airingAt'] ?? null;
-        $this->nextAiringAt = $airingAt ? new \DateTime()->setTimestamp($airingAt) : null;
-        $this->airingDay = ($airingAt && !$this->isAdult && $this->airingStatus === SeriesStatus::RELEASING->value) ?
-            strtoupper(new DateTimeImmutable('@'.$airingAt)->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l')) : null;
+        $this->nextAiringAt = match (true) {
+            $airingAt !== null => new \DateTime()->setTimestamp($airingAt),
+            $this->airingStatus === SeriesStatus::FINISHED->value => null,
+            default => $this->nextAiringFromSchedule(),
+        };
+        $this->airingDay = ($this->nextAiringAt !== null && !$this->isAdult && $this->airingStatus === SeriesStatus::RELEASING->value) ?
+            strtoupper(new DateTimeImmutable('@'.$this->nextAiringAt->getTimestamp())->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l')) : null;
 
         return $this;
     }

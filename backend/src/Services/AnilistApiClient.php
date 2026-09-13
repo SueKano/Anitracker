@@ -35,6 +35,7 @@ readonly class AnilistApiClient
               id title{romaji english} coverImage{extraLarge}
               episodes status nextAiringEpisode{episode airingAt} idMal isAdult
               season source genres format seasonYear synonyms tags{name rank} studios{edges{isMain node{name}}}
+              airingSchedule{nodes{airingAt episode}}
             }
           }
         }
