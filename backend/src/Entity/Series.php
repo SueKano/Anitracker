@@ -33,6 +33,9 @@ class Series extends AbstractEntity
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     private int $totalEpisodes = 0;
+
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $hasDeclaredTotalEpisodes = false;
     #[ORM\Column(type: 'integer', options: ['default' => 0])]
     private int $currentAiringEpisode = 0;
 
@@ -143,6 +146,48 @@ class Series extends AbstractEntity
         $airedEpisodes = array_filter($this->airingSchedule, static fn (array $node) => $node['airingAt'] <= $now);
 
         return max([0, ...array_column($airedEpisodes, 'episode')]);
+    }
+
+    public function mergeAiringWindow(array $windowNodes, int $windowStart, int $windowEnd): bool
+    {
+        $airingAtByEpisode = array_column($windowNodes, 'airingAt', 'episode');
+
+        foreach ($this->airingSchedule as $node) {
+            $isInsideWindow = $node['airingAt'] >= $windowStart && $node['airingAt'] <= $windowEnd;
+            if (!$isInsideWindow && !isset($airingAtByEpisode[$node['episode']])) {
+                $airingAtByEpisode[$node['episode']] = $node['airingAt'];
+            }
+        }
+        $mergedSchedule = self::scheduleFromEpisodes($airingAtByEpisode);
+
+        if ($mergedSchedule === $this->airingSchedule) {
+            return false;
+        }
+
+        $this->airingSchedule = $mergedSchedule;
+        $this->nextAiringAt = $this->nextAiringFromSchedule() ?? $this->nextAiringAt;
+        $this->airingDay = $this->resolveAiringDay();
+
+        return true;
+    }
+
+    private static function scheduleFromEpisodes(array $airingAtByEpisode): array
+    {
+        ksort($airingAtByEpisode);
+
+        return array_map(
+            static fn (int $episode, int $airingAt) => ['episode' => $episode, 'airingAt' => $airingAt],
+            array_keys($airingAtByEpisode), array_values($airingAtByEpisode)
+        );
+    }
+
+    private function resolveAiringDay(): ?string
+    {
+        if ($this->nextAiringAt === null || $this->isAdult || $this->airingStatus !== SeriesStatus::RELEASING->value) {
+            return null;
+        }
+
+        return strtoupper(new DateTimeImmutable('@'.$this->nextAiringAt->getTimestamp())->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l'));
     }
 
     private function nextAiringFromSchedule(): ?\DateTime
@@ -308,6 +353,18 @@ class Series extends AbstractEntity
         return $this;
     }
 
+    public function hasDeclaredTotalEpisodes(): bool
+    {
+        return $this->hasDeclaredTotalEpisodes;
+    }
+
+    public function isFinalEpisode(int $episode): bool
+    {
+        $hasTotalEpisodes = $this->hasDeclaredTotalEpisodes || $this->airingStatus === SeriesStatus::FINISHED->value;
+
+        return $hasTotalEpisodes && $this->totalEpisodes > 0 && $episode >= $this->totalEpisodes;
+    }
+
     public function getAiringStatus(): string
     {
         return $this->airingStatus;
@@ -365,15 +422,15 @@ class Series extends AbstractEntity
         $this->synonyms = array_values(array_unique([...$this->synonyms, ...($media['synonyms'] ?? [])]));
         $this->idMal = $media['idMal'] ?? null;
         $this->isAdult = $media['isAdult'] ?? false;
-        $this->totalEpisodes = max($this->totalEpisodes, self::resolveTotalEpisodes($media));
+        $declaredTotalEpisodes = !$this->isAdult ? (int) ($media['episodes'] ?? 0) : 0;
+        $this->hasDeclaredTotalEpisodes = $this->hasDeclaredTotalEpisodes || $declaredTotalEpisodes > 0;
+        $this->totalEpisodes = $declaredTotalEpisodes > 0 ? $declaredTotalEpisodes : max($this->totalEpisodes, self::resolveTotalEpisodes($media));
 
-        $scheduleNodes = $media['airingSchedule']['nodes'] ?? [];
-        $keepStoredSchedule = $scheduleNodes === [] && $this->airingStatus === SeriesStatus::RELEASING->value;
-        if (!$keepStoredSchedule) {
-            $this->airingSchedule = array_values(array_map(
-                static fn (array $node) => ['episode' => $node['episode'], 'airingAt' => $node['airingAt']], $scheduleNodes
-            ));
+        $airingAtByEpisode = array_column($media['airingSchedule']['nodes'] ?? [], 'airingAt', 'episode');
+        foreach ($this->airingSchedule as $node) {
+            $airingAtByEpisode[$node['episode']] ??= $node['airingAt'];
         }
+        $this->airingSchedule = self::scheduleFromEpisodes($airingAtByEpisode);
 
         $next = $media['nextAiringEpisode'] ?? null;
         $this->currentAiringEpisode = match (true) {
@@ -392,8 +449,7 @@ class Series extends AbstractEntity
             $this->airingStatus === SeriesStatus::FINISHED->value => null,
             default => $this->nextAiringFromSchedule(),
         };
-        $this->airingDay = ($this->nextAiringAt !== null && !$this->isAdult && $this->airingStatus === SeriesStatus::RELEASING->value) ?
-            strtoupper(new DateTimeImmutable('@'.$this->nextAiringAt->getTimestamp())->setTimezone(new \DateTimeZone('Europe/Madrid'))->format('l')) : null;
+        $this->airingDay = $this->resolveAiringDay();
 
         return $this;
     }

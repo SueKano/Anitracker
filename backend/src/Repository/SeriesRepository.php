@@ -40,6 +40,15 @@ class SeriesRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function findSeriesForAiringWindowSync(): array
+    {
+        return $this->createQueryBuilder('s')
+            ->where('s.airingStatus = :releasing AND s.isAdult = false')
+            ->setParameter('releasing', SeriesStatus::RELEASING->value)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findSeriesPendingCoverMirror(int $limit): array
     {
         return $this->createQueryBuilder('s')

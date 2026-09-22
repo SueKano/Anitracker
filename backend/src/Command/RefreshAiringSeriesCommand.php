@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Entity\Series;
 use App\Enum\SeriesStatus;
 use App\Exception\AnilistUnavailableException;
 use App\Repository\SeriesRepository;
@@ -17,8 +18,6 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'app:series:refresh-airing', description: 'Refresca series RELEASING que emiten hoy y NOT_YET_RELEASED pendientes (modo cron diario)')]
 class RefreshAiringSeriesCommand extends Command
 {
-    private const int SLEEP_MS = 3000;
-
     public function __construct(private readonly EntityManagerInterface $entityManager, private readonly SeriesRepository $seriesRepository,
                                 private readonly SeriesRefresher $seriesRefresher)
     {
@@ -43,30 +42,23 @@ class RefreshAiringSeriesCommand extends Command
             return Command::SUCCESS;
         }
 
-        $io->writeln(sprintf('%d series, refrescando con sleep de %dms entre llamadas', $total, self::SLEEP_MS));
-        $changed = 0;
-        $failed = 0;
-
-        $io->progressStart($total);
-        foreach ($series as $index => $serie) {
-            $previousStatus = $serie->getAiringStatus();
-            try {
-                $this->seriesRefresher->refreshFromAnilist($serie);
-                if ($serie->getAiringStatus() !== $previousStatus) {
-                    $changed++;
-                }
-            } catch (AnilistUnavailableException) {
-                $failed++;
-            }
-            $io->progressAdvance();
-            if ($index < $total - 1) {
-                usleep(self::SLEEP_MS * 1000);
-            }
+        $previousStatuses = [];
+        foreach ($series as $serie) {
+            $previousStatuses[$serie->getAnilistId()] = $serie->getAiringStatus();
         }
-        $this->entityManager->flush();
-        $io->progressFinish();
 
-        $io->table(['Métrica', 'Cantidad'], [['Procesadas', $total], ['Cambiaron de estado', $changed], ['Fallidas', $failed]]);
+        try {
+            $refreshed = $this->seriesRefresher->refreshManyFromAnilist($series);
+        } catch (AnilistUnavailableException) {
+            $io->error('AniList no respondió, no se ha refrescado nada');
+
+            return Command::FAILURE;
+        }
+
+        $changed = count(array_filter($refreshed, static fn (Series $serie) => $serie->getAiringStatus() !== $previousStatuses[$serie->getAnilistId()]));
+        $this->entityManager->flush();
+
+        $io->table(['Métrica', 'Cantidad'], [['Procesadas', $total], ['Cambiaron de estado', $changed], ['No devueltas por AniList', $total - count($refreshed)]]);
 
         return Command::SUCCESS;
     }

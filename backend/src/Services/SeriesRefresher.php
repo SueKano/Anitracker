@@ -26,6 +26,24 @@ class SeriesRefresher
         $series->setLastRefreshedAt(new \DateTime());
     }
 
+    public function refreshManyFromAnilist(array $series): array
+    {
+        $anilistIds = array_map(static fn (Series $serie) => $serie->getAnilistId(), $series);
+        $mediaByAnilistId = $this->anilistClient->fetchMediaByIds($anilistIds);
+
+        $refreshed = [];
+        foreach ($series as $serie) {
+            if (!isset($mediaByAnilistId[$serie->getAnilistId()])) {
+                continue;
+            }
+            $serie->mapAnilistData($mediaByAnilistId[$serie->getAnilistId()]);
+            $serie->setLastRefreshedAt(new \DateTime());
+            $refreshed[] = $serie;
+        }
+
+        return $refreshed;
+    }
+
     public function refreshIfReleasingDue(Series $series): bool
     {
         if ($series->getAiringStatus() !== SeriesStatus::RELEASING->value) {

@@ -108,7 +108,7 @@ class SeriesController extends AbstractController
                 return null;
             }
 
-            $isLastEpisode = $foundSeries->getAiringStatus() === SeriesStatus::FINISHED->value && $numberEpisodeToAdd === $foundSeries->getTotalEpisodes();
+            $isLastEpisode = $foundSeries->isFinalEpisode($numberEpisodeToAdd);
             $justCompleted = $isLastEpisode && !$userSeries->isCompleted();
             $rewatchFinished = $isLastEpisode && $userSeries->isRewatching();
 
