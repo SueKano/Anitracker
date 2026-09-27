@@ -40,7 +40,6 @@ class Series extends AbstractEntity
     private int $currentAiringEpisode = 0;
 
     #[ORM\Column(type:'string', length: 10, nullable: true)]
-    #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
     private ?string $airingDay =null;
 
     #[ORM\Column(type: 'integer', unique: true, options: ['default' => 0])]
@@ -328,6 +327,13 @@ class Series extends AbstractEntity
     public function getAiringDay(): ?string
     {
         return $this->airingDay;
+    }
+
+    #[Groups(['home:userSeries', 'detail:series', 'search:series'])]
+    #[SerializedName('airingDay')]
+    public function getDisplayAiringDay(): ?string
+    {
+        return $this->isFinalEpisode($this->getAiredEpisodes()) ? null : $this->airingDay;
     }
 
     public function setAiringDay(?string $airingDay): Series
