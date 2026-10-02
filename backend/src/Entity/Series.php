@@ -182,7 +182,7 @@ class Series extends AbstractEntity
 
     private function resolveAiringDay(): ?string
     {
-        if ($this->nextAiringAt === null || $this->isAdult || $this->airingStatus !== SeriesStatus::RELEASING->value) {
+        if ($this->nextAiringAt === null || $this->isAdult || $this->getAiringStatus() !== SeriesStatus::RELEASING->value) {
             return null;
         }
 
@@ -373,6 +373,10 @@ class Series extends AbstractEntity
 
     public function getAiringStatus(): string
     {
+        if ($this->airingStatus === SeriesStatus::NOT_YET_RELEASED->value && $this->getLastAiredEpisodeFromSchedule() >= 1) {
+            return SeriesStatus::RELEASING->value;
+        }
+
         return $this->airingStatus;
     }
 
